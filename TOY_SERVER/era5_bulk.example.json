@@ -1,24 +1,24 @@
 {
   "schema_version": "toy-server-1",
   "paths": {
-    "wind": "data/wind.nc",
-    "waves": "data/waves.nc",
+    "wind": "data/bulk_2022_2024_wind.nc",
+    "waves": "data/bulk_2022_2024_waves.nc",
     "gebco": "data/gebco_2026.nc",
     "cases": "cases",
     "swan_executable": "swan"
   },
   "sampling": {
-    "start_utc": "2023-07-01T00:00:00",
-    "end_utc": "2023-07-01T21:00:00",
-    "step_hours": 3
+    "start_utc": "2022-01-01T00:00:00",
+    "end_utc": "2024-12-31T23:00:00",
+    "step_hours": 1
   },
   "era5": {
     "dataset": "reanalysis-era5-single-levels",
     "area_north_west_south_east": [
-      24.5,
-      121.0,
-      23.0,
-      122.5
+      27,
+      117,
+      20,
+      125
     ],
     "download": {
       "workers": 5,

@@ -12,7 +12,8 @@
 | `generate_cases.py` | 生成自包含圆岛 case、原始矩阵和 manifest |
 | `run_swan.py` | 读取已有 case，执行并检查输出和收敛 |
 | `prepare_dataset.py` | 将已完成 case 转为训练 shard |
-| `request_era5.py`、`era5_config.json` | 独立保留的 ERA5 请求入口 |
+| `request_era5.py`、`era5_config.json` | 独立 ERA5 请求入口与下载配置 |
+| `era5_jobs.py`、`era5_merge.py` | 请求拆分、五槽调度、任务恢复及逐块合并 |
 | `island_core.py` | 同源圆岛几何、风浪条件和 split 库 |
 | `forcing_arrays.py` | 矩阵契约与模型特征 |
 | `swan_inputs.py`、`swan_runtime.py` | SWAN 输入文件和运行结果检查库 |
@@ -86,9 +87,12 @@ key: 你的个人token
 
 ```text
 python request_era5.py --config era5_config.json --dry-run
-python request_era5.py --config era5_config.json
+python request_era5.py --config era5_config.json --download-only
+python request_era5.py --config era5_config.json --merge-only
 ```
 
 输出 `data/wind.nc` 与 `data/waves.nc`；默认波浪字段为 swh、mp1、mwd、mwp。
 mp1 是 Tm01，mwp 是 Tm-1,0，二者分别保留。已有旧 waves.nc 时用 `--overwrite`。
 dry-run 不验证 token。账户文件无需放入共享目录，也不会进入 Git 或上传 ZIP。
+
+大量下载策略、三年逐小时示例和恢复方法见 [ERA5_DOWNLOAD.md](ERA5_DOWNLOAD.md)。

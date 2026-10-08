@@ -11,8 +11,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from island_core import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
-from project import load_config
-from request_era5 import requests_for
+from project import load_config, sample_times
+from era5_jobs import download_settings, requests_for, split_plan
 from swan_inputs import grid_coordinates, prepare_case
 from swan_runtime import inspect_case
 
@@ -53,7 +53,33 @@ class PipelineTests(unittest.TestCase):
     def test_era5_request_preserves_mwp(self):
         config = load_config(ROOT / "era5_config.json")
         waves = [plan for plan in requests_for(config) if plan["group"] == "waves"]
+        variables = {variable for plan in waves for variable in plan["request"]["variable"]}
+        self.assertIn("mean_wave_period", variables)
+        self.assertIn("mean_wave_period_based_on_first_moment", variables)
         for plan in waves:
-            self.assertIn("mean_wave_period", plan["request"]["variable"])
-            self.assertIn("mean_wave_period_based_on_first_moment", plan["request"]["variable"])
+            self.assertEqual(len(plan["request"]["variable"]), 1)
             self.assertEqual(plan["request"]["grid"], [.5, .5])
+
+    def test_download_plan_month_and_hour_boundaries(self):
+        config = load_config(ROOT / "era5_config.json")
+        config["sampling"] = {"start_utc": "2024-02-28T21:00:00", "end_utc": "2024-03-01T03:00:00", "step_hours": 3}
+        plans = requests_for(config)
+        actual = {(plan["request"]["year"][0], plan["request"]["month"][0], day, hour)
+                  for plan in plans if plan["group"] == "wind"
+                  for day in plan["request"]["day"] for hour in plan["request"]["time"]}
+        expected = {(stamp.strftime("%Y"), stamp.strftime("%m"), stamp.strftime("%d"), stamp.strftime("%H:%M"))
+                    for stamp in sample_times(config)}
+        self.assertEqual(actual, expected)
+        self.assertIn(("2024", "02", "29", "00:00"), actual)
+
+    def test_split_variables_before_dates_and_reject_six_workers(self):
+        config = load_config(ROOT / "era5_config.json")
+        config["era5"]["download"]["variables_per_request"] = 2
+        plan = next(plan for plan in requests_for(config) if plan["group"] == "wind")
+        children = split_plan(plan)
+        self.assertEqual([child["request"]["variable"] for child in children],
+                         [[plan["request"]["variable"][0]], [plan["request"]["variable"][1]]])
+        self.assertTrue(all(child["request"]["day"] == plan["request"]["day"] for child in children))
+        config["era5"]["download"]["workers"] = 6
+        with self.assertRaises(ValueError):
+            download_settings(config)

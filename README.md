@@ -43,3 +43,8 @@ python evaluate_v2.py --data TOY_SERVER/dataset/1km --checkpoint training/island
 根目录 `requirements.txt` 用于生成、转换和可视化，不含 Torch/模型库。
 测试使用合成夹具，独立于原项目大数据；本轮只更新测试源码，未执行测试。
 以后可以在根目录、island_toy、TOY_SERVER 中分别运行 `python -m unittest discover -s tests -v`。
+
+## 批量 ERA5 下载
+
+`TOY_SERVER/request_era5.py` 支持单变量分块、最多五个在途任务、任务 ID 恢复和逐块合并。
+详见 [下载说明](TOY_SERVER/ERA5_DOWNLOAD.md)。本次更新仅做静态检查，未发起 CDS 请求。

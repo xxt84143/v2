@@ -18,7 +18,20 @@
       121.0,
       23.0,
       122.5
-    ]
+    ],
+    "download": {
+      "workers": 5,
+      "variables_per_request": 1,
+      "max_days_per_request": 31,
+      "max_fields_per_request": 10000,
+      "max_estimated_mib": 256,
+      "http_timeout_seconds": 120,
+      "http_retries": 10,
+      "poll_seconds": 30,
+      "download_attempts": 3,
+      "retry_seconds": 30,
+      "merge_time_chunk": 24
+    }
   },
   "tiles": [
     {
