@@ -1,0 +1,41 @@
+{
+  "schema_version": "island-toy-config-1",
+  "parent_config": "../config.json",
+  "tile_id": "E121p5_N23p5",
+  "profiles": ["1km"],
+  "seed": 20260924,
+  "terrain": {
+    "count": {"train": 24, "validation": 4, "test": 4},
+    "base_depth_m": 100.0,
+    "island_radius_km": [3.0, 8.0],
+    "skirt_width_km": [5.0, 12.0],
+    "shore_depth_m": [3.0, 15.0],
+    "outer_clearance_km": 1.0
+  },
+  "forcing": {
+    "count": {"train": 8, "validation": 2, "test": 2},
+    "wind_speed_mps": [5.0, 20.0],
+    "current_base_speed_mps": 0.05,
+    "current_per_wind": 0.025,
+    "current_direction_offsets_deg": [0.0, -45.0, 45.0, 180.0],
+    "wave_wind_offsets_deg": [-30.0, 0.0, 30.0],
+    "wave_hs_base_m": 0.8,
+    "wave_hs_per_wind": 0.18,
+    "wave_tp_base_s": 5.0,
+    "wave_tp_per_wind": 0.35,
+    "directional_spread_deg": 20.0,
+    "jonswap_gamma": 3.3
+  },
+  "physics_commands": [
+    "FRICTION JONSWAP CONSTANT 0.038",
+    "BREAKING CONSTANT ALPHA 1.0 GAMMA 0.73",
+    "GEN3 KOMEN"
+  ],
+  "normalization": {
+    "depth_scale_m": 100.0,
+    "hs_scale_m": 5.0,
+    "period_scale_s": 15.0,
+    "wind_scale_mps": 25.0,
+    "current_scale_mps": 1.0
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "schema_version": "taiwan-swan-batch-config-v1",
+  "paths": {
+    "cases_csv": "../../TOY/v2/cases.csv",
+    "era5_netcdf": "../../ERA5DATA/ERA5_merged_2022_2024.nc",
+    "boundary_index_csv": "../../TOY/v2/grids/1000m/boundary_index.csv",
+    "grids_root": "../../TOY/v2/grids",
+    "runs_root": "../../TOY/v2/runs",
+    "swan_executable": "../../example/swan.exe"
+  },
+  "grid_commands_file": null,
+  "grid_resolution_m": 1000,
+  "time": {
+    "case_id_column": "case_id",
+    "case_time_column": "time",
+    "interpret_naive_as": "UTC",
+    "matching": "exact"
+  },
+  "variables": {
+    "time": "valid_time",
+    "wind_longitude": "wind_longitude",
+    "wind_latitude": "wind_latitude",
+    "wave_longitude": "wave_longitude",
+    "wave_latitude": "wave_latitude",
+    "u10": "u10",
+    "v10": "v10",
+    "swh": "swh",
+    "mwp": "mwp",
+    "mwd": "mwd"
+  },
+  "boundary": {
+    "mode": "jonswap",
+    "source_dir": "../../ERA5Data_new/WaveSpectra",
+    "spectrum_dir": "spectra",
+    "frequency_start_hz": 0.03453,
+    "frequency_ratio": 1.1,
+    "frequency_count": 30,
+    "direction_start_deg": 7.5,
+    "direction_step_deg": 15.0,
+    "direction_count": 24,
+    "source_direction_units": "radian",
+    "era5_to_swan_direction_shift_deg": 180.0,
+    "jonswap_gamma": 3.3,
+    "directional_spread_degrees": 30.0,
+    "inactive_vertex_snap_cells": 2.0
+  },
+  "physics_commands": [
+    "FRICTION JONSWAP CONSTANT 0.038",
+    "BREAKING BJ ALPHA 1.0 GAMMA 0.73",
+    "GEN3 KOMEN"
+  ],
+  "output": {
+    "filename": "output/compgrid.tab",
+    "layout": 3,
+    "quantities": ["XP", "YP", "DEPTH", "HSIGN", "TM01", "TM02", "RTP", "DIR", "PDIR", "WIND"]
+  },
+  "run": {"default_workers": 1, "timeout_seconds": 0}
+}

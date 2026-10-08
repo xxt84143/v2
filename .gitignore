@@ -1,0 +1,53 @@
+# Python caches, test caches, and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+*.egg-info/
+
+# Local editor and operating-system files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+
+# Local credentials (keep shareable environment examples)
+.env
+.env.*
+!.env.example
+!.env.template
+.cdsapirc
+.netrc
+.aws/
+.ssh/
+
+# Generated v2 catalogs, grids, SWAN outputs, datasets, and model results
+/index/
+/grids/
+/runs/
+/dataset/
+/training/
+/evaluation/
+/logs/
+/diagnostics/
+
+# Generated circular-island experiment artifacts
+/island_toy/index/
+/island_toy/terrains/
+/island_toy/runs/
+/island_toy/dataset/
+/island_toy/training/
+/island_toy/evaluation/
+/island_toy/logs/
+/island_toy/diagnostics/

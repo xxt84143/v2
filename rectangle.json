@@ -1,0 +1,10 @@
+{
+  "lon0": 120.0,
+  "lat0": 23.5,
+  "width_deg": 0.5,
+  "height_deg": 0.5,
+  "resolutions": [
+    "15arcsec",
+    "1000m"
+  ]
+}
