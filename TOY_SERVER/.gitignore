@@ -1,0 +1,8 @@
+.cdsapirc
+__pycache__/
+data/raw/
+data/*.nc
+cases/
+cases_island/
+dataset/
+*.partial

@@ -13,8 +13,8 @@ import numpy as np
 import xarray as xr
 
 from v2_core import (
-    CORNER_NAMES, HERE, WIND_NAMES, enumerate_tiles, load_config, make_grid_spec,
-    resolve_config_path, split_for_case, wind_points, write_csv,
+    CORNER_NAMES, HERE, enumerate_tiles, load_config, make_grid_spec,
+    resolve_config_path, split_for_case, write_csv,
 )
 
 
@@ -202,26 +202,31 @@ def write_cases(config: dict, era5: xr.Dataset, tiles: dict, output: Path) -> No
                 "time": source_row.time.isoformat(), "era5_time_index": index,
                 "split": split_for_case(str(source_row.case_id), config["split"]),
             }
-            for corner, (iy, ix) in zip(CORNER_NAMES, tile.wave_indices):
-                for source_name, target_name in (("swh", "hs_m"), ("mwp", "mwp_s"), ("mwd", "mwd_deg")):
-                    value = float(era5[source_name].isel(valid_time=index, wave_latitude=iy, wave_longitude=ix))
-                    if not math.isfinite(value):
-                        raise ValueError(f"{row['sample_id']}: non-finite {source_name} at {corner}")
-                    row[f"wave_{corner}_{target_name}"] = value % 360.0 if source_name == "mwd" else value
-            for point, (lon, lat) in wind_points(tile).items():
-                selected = era5[["u10", "v10"]].sel(wind_longitude=lon, wind_latitude=lat).isel(valid_time=index)
-                for component in ("u10", "v10"):
-                    value = float(selected[component])
-                    if not math.isfinite(value):
-                        raise ValueError(f"{row['sample_id']}: non-finite {component} at {point}")
-                    row[f"wind_{point}_{component}"] = value
+            wave = np.empty((3, 2, 2), dtype=np.float32)
+            wind = np.empty((2, 3, 3), dtype=np.float32)
+            for y, latitude in enumerate((tile.south, tile.north)):
+                for x, longitude in enumerate((tile.west, tile.east)):
+                    for channel, name in enumerate(("swh", "mwp", "mwd")):
+                        wave[channel, y, x] = float(era5[name].sel(wave_latitude=latitude, wave_longitude=longitude).isel(valid_time=index))
+            wave[2] %= 360
+            for y, latitude in enumerate((tile.south, tile.center[1], tile.north)):
+                for x, longitude in enumerate((tile.west, tile.center[0], tile.east)):
+                    for channel, name in enumerate(("u10", "v10")):
+                        wind[channel, y, x] = float(era5[name].sel(wind_latitude=latitude, wind_longitude=longitude).isel(valid_time=index))
+            from forcing_arrays import validate
+            validate(wave, wind)
+            forcing_file = Path("forcings") / tile_id / f"{source_row.case_id}.npz"
+            destination = output / "index" / forcing_file
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(destination, wave=wave, wind=wind)
+            row["forcing_file"] = forcing_file.as_posix()
             rows.append(row)
     write_csv(output / "index" / "cases.csv", rows)
     summary = {
         "schema_version": "toy-v2-index-1", "created_at_utc": utc_now(),
         "sample_count": len(rows), "tile_count": len(config["tiles"]),
-        "source_case_count": len(source), "wind_controls": list(WIND_NAMES),
-        "wave_corners": list(CORNER_NAMES),
+        "source_case_count": len(source), "wind_shape": [2, 3, 3], "wave_shape": [3, 2, 2],
+        "matrix_order": "channel, south-to-north, west-to-east",
         "split_counts": {name: sum(row["split"] == name for row in rows) for name in ("train", "validation", "test")},
         "leakage_rule": "same source_case_id has the same split for every tile and resolution",
     }

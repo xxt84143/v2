@@ -10,36 +10,14 @@ import numpy as np
 import xarray as xr
 
 from v2_core import (
-    CORNER_NAMES, HERE, WIND_NAMES, load_config, padded_shape, read_csv,
+    HERE, load_config, padded_shape, read_csv,
     read_swan_block, write_csv,
 )
 
 
-def dense_input(row: dict[str, str], depth: np.ndarray, wet: np.ndarray, config: dict) -> tuple[np.ndarray, list[str]]:
-    norm = config["normalization"]
-    depth_channel = np.log1p(np.minimum(np.maximum(depth, 0.0), float(norm["depth_cap_m"]))) / np.log1p(float(norm["depth_cap_m"]))
-    yy, xx = np.meshgrid(
-        np.linspace(-1.0, 1.0, depth.shape[0], dtype=np.float32),
-        np.linspace(-1.0, 1.0, depth.shape[1], dtype=np.float32), indexing="ij",
-    )
-    channels = [depth_channel.astype(np.float32), wet.astype(np.float32), xx, yy]
-    names = ["log_depth", "wet_mask", "x_normalized", "y_normalized"]
-    for corner in CORNER_NAMES:
-        angle = np.deg2rad(float(row[f"wave_{corner}_mwd_deg"]))
-        values = (
-            float(row[f"wave_{corner}_hs_m"]) / float(norm["hs_scale_m"]),
-            float(row[f"wave_{corner}_mwp_s"]) / float(norm["period_scale_s"]),
-            float(np.sin(angle)), float(np.cos(angle)),
-        )
-        for suffix, value in zip(("hs", "period", "dir_sin", "dir_cos"), values):
-            channels.append(np.full(depth.shape, value, dtype=np.float32))
-            names.append(f"wave_{corner}_{suffix}")
-    for point in WIND_NAMES:
-        for component in ("u10", "v10"):
-            value = float(row[f"wind_{point}_{component}"]) / float(norm["wind_scale_mps"])
-            channels.append(np.full(depth.shape, value, dtype=np.float32))
-            names.append(f"wind_{point}_{component}")
-    return np.stack(channels), names
+def dense_input(wave: np.ndarray, wind: np.ndarray, depth: np.ndarray, wet: np.ndarray, config: dict):
+    from forcing_arrays import model_inputs
+    return model_inputs(wave, wind, depth, wet, config["normalization"])
 
 
 def pad(array: np.ndarray, target: tuple[int, int], value: float = 0.0) -> np.ndarray:
@@ -90,17 +68,19 @@ def main() -> None:
             wet = np.asarray(ds.wet_mask.values, dtype=bool)
         hs = read_swan_block(result, depth.shape, list(config["output"]["quantities"]), "HSIGN")
         valid = wet & np.isfinite(hs) & (hs >= 0.0)
-        x, names = dense_input(row, depth, wet, config)
+        from forcing_arrays import load
+        wave, wind = load(HERE / "index" / row["forcing_file"])
+        x, names = dense_input(wave, wind, depth, wet, config)
         if channel_names is None:
             channel_names = names
         elif names != channel_names:
             raise AssertionError("v2 channel order changed within one conversion")
         shape = padded_shape(depth.shape, multiple)
-        target = hs[None] / float(config["normalization"]["hs_scale_m"])
+        target = np.where(valid, hs, 0)[None] / float(config["normalization"]["hs_scale_m"])
         shard = output / tile_id / f"{row['case_id']}.npz"
         shard.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
-            shard, x=pad(x, shape), y=pad(target.astype(np.float32), shape),
+            shard, wave=wave, wind=wind, x=pad(x, shape), y=pad(target.astype(np.float32), shape),
             mask=pad(valid[None].astype(np.uint8), shape), raw_shape=np.asarray(depth.shape),
         )
         manifest.append({
@@ -116,7 +96,7 @@ def main() -> None:
         raise ValueError(f"Profile {args.profile} produced incompatible padded shapes: {sorted(padded_shapes)}")
     write_csv(output / "manifest.csv", manifest)
     metadata = {
-        "schema_version": "toy-v2-dataset-1", "profile": args.profile,
+        "schema_version": "toy-v2-dataset-matrix-2", "profile": args.profile,
         "sample_count": len(manifest), "input_channel_count": len(channel_names),
         "input_channels": channel_names, "target": "SWAN HSIGN / hs_scale_m",
         "padded_shape": list(next(iter(padded_shapes))), "pad_policy": "north/east zero pad to model_pad_multiple",

@@ -51,3 +51,9 @@ Desktop.ini
 /island_toy/evaluation/
 /island_toy/logs/
 /island_toy/diagnostics/
+
+# Standalone island server artifacts
+/TOY_SERVER/cases_island/
+/TOY_SERVER/dataset/
+/TOY_SERVER/data/
+/TOY_SERVER/*.zip

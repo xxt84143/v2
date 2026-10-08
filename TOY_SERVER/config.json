@@ -1,0 +1,161 @@
+{
+  "schema_version": "toy-server-1",
+  "paths": {
+    "wind": "data/wind.nc",
+    "waves": "data/waves.nc",
+    "cases": "cases_island",
+    "swan_executable": "swan"
+  },
+  "sampling": {
+    "start_utc": "2023-07-01T00:00:00",
+    "end_utc": "2023-07-01T21:00:00",
+    "step_hours": 3
+  },
+  "era5": {
+    "dataset": "reanalysis-era5-single-levels",
+    "area_north_west_south_east": [
+      24.5,
+      121.0,
+      23.0,
+      122.5
+    ]
+  },
+  "tiles": [
+    {
+      "id": "E121p5_N23p5",
+      "west": 121.5,
+      "south": 23.5
+    }
+  ],
+  "resolutions": {
+    "1km": {
+      "kind": "metres",
+      "spacing": 1000
+    },
+    "gebco15s": {
+      "kind": "degrees",
+      "spacing": 0.004166666666666667
+    }
+  },
+  "boundary": {
+    "period": "peak",
+    "jonswap_gamma": 3.3,
+    "directional_spread_degrees": 30.0
+  },
+  "grid": {
+    "minimum_wet_depth_m": 0.5,
+    "exception": -999.0
+  },
+  "spectral_grid": {
+    "directions": 36,
+    "lowest_frequency_hz": 0.03453,
+    "highest_frequency_hz": 0.5477526003,
+    "frequency_intervals": 29
+  },
+  "physics_commands": [
+    "FRICTION JONSWAP CONSTANT 0.038",
+    "BREAKING CONSTANT ALPHA 1.0 GAMMA 0.73",
+    "GEN3 KOMEN"
+  ],
+  "output_quantities": [
+    "XP",
+    "YP",
+    "DEPTH",
+    "HSIGN",
+    "TM01",
+    "TM02",
+    "RTP",
+    "DIR",
+    "PDIR",
+    "DSPR",
+    "TMM10",
+    "WIND"
+  ],
+  "run": {
+    "workers": 1,
+    "threads_per_case": 1,
+    "timeout_seconds": 600
+  },
+  "experiment": {
+    "seed": 20260924,
+    "terrain": {
+      "count": {
+        "train": 24,
+        "validation": 4,
+        "test": 4
+      },
+      "base_depth_m": 100.0,
+      "island_radius_km": [
+        3.0,
+        8.0
+      ],
+      "skirt_width_km": [
+        5.0,
+        12.0
+      ],
+      "shore_depth_m": [
+        3.0,
+        15.0
+      ],
+      "outer_clearance_km": 1.0
+    },
+    "forcing": {
+      "count": {
+        "train": 12,
+        "validation": 4,
+        "test": 4
+      },
+      "windsea_speed_mps": [
+        8.0,
+        14.0
+      ],
+      "windsea_wave_age": [
+        0.8,
+        1.15
+      ],
+      "windsea_steepness": [
+        0.018,
+        0.03
+      ],
+      "wind_only_speed_mps": [
+        6.0,
+        14.0
+      ],
+      "swell_height_m": [
+        0.5,
+        2.5
+      ],
+      "swell_period_s": [
+        9.0,
+        14.0
+      ],
+      "swell_wind_speed_mps": [
+        1.0,
+        5.0
+      ],
+      "swell_wind_offsets_deg": [
+        0.0,
+        -45.0,
+        45.0,
+        90.0,
+        180.0
+      ],
+      "maximum_relative_gradient": 0.08,
+      "maximum_direction_gradient_deg": 4.0,
+      "maximum_steepness": 0.04,
+      "directional_spread_deg": 30.0,
+      "jonswap_gamma": 3.3
+    },
+    "profiles": [
+      "1km"
+    ],
+    "normalization": {
+      "depth_scale_m": 100.0,
+      "hs_scale_m": 5.0,
+      "period_scale_s": 15.0,
+      "wind_scale_mps": 25.0,
+      "current_scale_mps": 1.0,
+      "depth_reference_m": 10.0
+    }
+  }
+}

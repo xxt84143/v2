@@ -17,7 +17,6 @@ import xarray as xr
 HERE = Path(__file__).resolve().parent
 EARTH_RADIUS_M = 6_371_008.8
 CORNER_NAMES = ("sw", "se", "ne", "nw")
-WIND_NAMES = ("south", "east", "north", "west", "center")
 
 
 @dataclass(frozen=True)
@@ -160,36 +159,6 @@ def make_grid_spec(tile: Tile, profile: str, settings: dict[str, Any]) -> GridSp
     return GridSpec(profile, tile, lon, lat, int(settings["nominal_spacing_m"]))
 
 
-def wind_points(tile: Tile) -> dict[str, tuple[float, float]]:
-    cx, cy = tile.center
-    return {
-        "south": (cx, tile.south), "east": (tile.east, cy),
-        "north": (cx, tile.north), "west": (tile.west, cy), "center": (cx, cy),
-    }
-
-
-def reconstruct_wind_grid(tile: Tile, values: dict[str, float], power: float = 2.0) -> np.ndarray:
-    """IDW the five declared wind controls onto the required 3x3 SWAN grid."""
-    points = wind_points(tile)
-    missing = sorted(set(WIND_NAMES).difference(values))
-    if missing:
-        raise ValueError(f"Missing wind controls: {', '.join(missing)}")
-    lon = np.asarray([tile.west, tile.center[0], tile.east])
-    lat = np.asarray([tile.south, tile.center[1], tile.north])
-    out = np.empty((3, 3), dtype=np.float32)
-    controls = [(points[name][0], points[name][1], float(values[name])) for name in WIND_NAMES]
-    for iy, y in enumerate(lat):
-        for ix, x in enumerate(lon):
-            distances = np.asarray([_distance_m(x, y, px, py) for px, py, _ in controls])
-            exact = np.flatnonzero(distances < 1e-7)
-            if exact.size:
-                out[iy, ix] = controls[int(exact[0])][2]
-            else:
-                weights = distances ** (-power)
-                out[iy, ix] = float(np.dot(weights, [item[2] for item in controls]) / weights.sum())
-    return out
-
-
 def split_for_case(case_id: str, settings: dict[str, Any]) -> str:
     digest = hashlib.sha256(f"{int(settings['seed'])}:{case_id}".encode("utf-8")).digest()
     value = int.from_bytes(digest[:8], "big") / float(2**64)
@@ -247,9 +216,3 @@ def read_swan_block(path: Path, shape: tuple[int, int], quantities: list[str], n
     if values.size != expected:
         raise ValueError(f"{path}: {name} has {values.size} values, expected {expected}")
     return values.reshape(shape)
-
-
-def forcing_columns() -> list[str]:
-    wave = [f"wave_{corner}_{field}" for corner in CORNER_NAMES for field in ("hs_m", "mwp_s", "mwd_deg")]
-    wind = [f"wind_{point}_{component}" for point in WIND_NAMES for component in ("u10", "v10")]
-    return wave + wind

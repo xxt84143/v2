@@ -2,8 +2,7 @@
 
 The mature SWAN_YEARLY runner is reused for boundary tracing, JONSWAP forcing,
 INPUT rendering, case execution, and status files.  This wrapper only supplies
-the v2 rectangle/grid contract and limits wind information to the declared five
-ERA5 controls.
+the v2 rectangle/grid contract and uses the full nine-node ERA5 wind matrix.
 """
 
 from __future__ import annotations
@@ -20,7 +19,7 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
-from v2_core import HERE, WIND_NAMES, load_config, read_csv, reconstruct_wind_grid, resolve_config_path, wind_points
+from v2_core import HERE, load_config, read_csv, resolve_config_path
 
 
 SWAN_YEARLY = HERE.parents[1] / "SWAN_YEARLY"
@@ -89,17 +88,12 @@ def to_case(row: dict[str, str]) -> core.CaseRecord:
     return core.CaseRecord(row["case_id"], stamp, row)
 
 
-def limit_wind_to_five(data: core.ExtractedData, rows: list[dict[str, str]], tile) -> core.ExtractedData:
-    u = np.empty((len(rows), 3, 3), dtype=np.float32)
-    v = np.empty_like(u)
-    for index, row in enumerate(rows):
-        u[index] = reconstruct_wind_grid(tile, {name: float(row[f"wind_{name}_u10"]) for name in WIND_NAMES})
-        v[index] = reconstruct_wind_grid(tile, {name: float(row[f"wind_{name}_v10"]) for name in WIND_NAMES})
-    return core.ExtractedData(
-        data.time_indices, u, v, data.swh, data.mwp, data.mwd,
-        np.asarray([tile.west, tile.center[0], tile.east]),
-        np.asarray([tile.south, tile.center[1], tile.north]),
-    )
+def use_nine_node_wind(data: core.ExtractedData, rows: list[dict[str, str]], tile) -> core.ExtractedData:
+    from forcing_arrays import load
+    matrices = np.stack([load(HERE / "index" / row["forcing_file"])[1] for row in rows])
+    return core.ExtractedData(data.time_indices, matrices[:, 0], matrices[:, 1], data.swh, data.mwp, data.mwd,
+                              np.asarray([tile.west, tile.center[0], tile.east]),
+                              np.asarray([tile.south, tile.center[1], tile.north]))
 
 
 def context(config: dict, profile: str, tile_id: str, case_ids: list[str] | None, limit: int | None):
@@ -118,7 +112,7 @@ def context(config: dict, profile: str, tile_id: str, case_ids: list[str] | None
         tile = tile_map(era5)[tile_id]
     geometry = core.orient_and_map_boundary(grid, cfg)
     data = core.extract_era5(era5_path, cases, grid, cfg)
-    data = limit_wind_to_five(data, rows, tile)
+    data = use_nine_node_wind(data, rows, tile)
     return cfg, cases, rows, grid, geometry, data, tile
 
 
@@ -141,22 +135,18 @@ def prepare(config: dict, profile: str, tile_id: str, case_ids: list[str] | None
             }
         else:
             record = core.prepare_case(root, case, index, grid, geometry, data, cfg, core.utc_now(), overwrite)
-        controls = []
-        for name, (lon, lat) in wind_points(tile).items():
-            controls.append({
-                "point": name, "lon": f"{lon:.10f}", "lat": f"{lat:.10f}",
-                "u10": row[f"wind_{name}_u10"], "v10": row[f"wind_{name}_v10"],
-            })
-        core.atomic_write_csv(case_dir / "v2_wind_controls.csv", list(controls[0]), controls)
+        from forcing_arrays import load
+        wave, wind = load(HERE / "index" / row["forcing_file"])
+        np.savez_compressed(case_dir / "forcing.npz", wave=wave, wind=wind)
         metadata_path = case_dir / "case_metadata.json"
         metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
         metadata["v2_contract"] = {
             "schema_version": "toy-v2-case-extension-1", "tile_id": tile_id,
             "resolution_profile": profile,
             "wave_inputs": "four ERA5 corners: swh/mwp/mwd",
-            "wind_inputs": "south/east/north/west edge midpoints plus center: u10/v10",
-            "swan_wind_corner_policy": "inverse-distance-squared reconstruction from only the five controls",
-            "wind_controls_file": "v2_wind_controls.csv",
+            "wind_inputs": "all nine ERA5 wind nodes: wind(2,3,3)",
+            "swan_wind_corner_policy": "direct nine-node inputs; no five-point reconstruction",
+            "forcing_file": "forcing.npz",
         }
         core.atomic_write_json(metadata_path, metadata)
         record.update({"sample_id": row["sample_id"], "tile_id": tile_id, "profile": profile, "split": row["split"]})

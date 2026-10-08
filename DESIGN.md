@@ -1,26 +1,14 @@
-﻿# v2 design notes
+# v2 设计说明
 
-## Geometry contract
+当前版本采用规整矩阵输入和圆岛实验。完整设计见 [MATRIX_ISLAND_UPDATE.md](MATRIX_ISLAND_UPDATE.md)。
 
-The only free geometric parameters are the south-west ERA5 wave coordinate
-`(lon0, lat0)`. Width and height are fixed at 0.5°. This makes all four wave
-boundary controls exact ERA5 locations and makes the 0.25° wind-grid points
-exactly the four edge midpoints plus the centre.
+- 波浪为 `channel×2×2`；完整九点风为 `component×3×3`。
+- 行从南到北，列从西到东；索引不依靠位置名称。
+- 原始矩阵与 SWAN case 的输入文件一起保存，训练特征由相同矩阵生成。
+- 深度采用带 10 m 参考尺度的 log1p 编码；陆地与 padding 单独使用 mask。
+- 圆岛先划分地形与海况，再组合 case，保留三类泛化评估。
+- 同一套海况共享背景，风浪同向时用波龄、波陡关联 U、Tp 和 Hs。
+- 四边共享海况，SWAN 只采用谱的入射分量；九点风直接写入。
+- 入口通过文件衔接，公共库只处理几何、矩阵与 SWAN 文件。
 
-## Why the terrain path is U-Net-friendly
-
-The SWAN input and Hs output are dense 2-D fields on the same rectangular grid.
-The v2 tensor converter therefore keeps the terrain as a spatial channel and
-maps the coarse forcing fields onto the same grid. A U-Net-style encoder/
-decoder can use local bathymetry in the high-resolution path while using the
-coarse bottleneck to represent domain-scale propagation. The first model
-should remain deliberately small; increase width only after the 1-km pilot is
-stable.
-
-## Boundary caveat
-
-GEBCO may place a rectangle corner on land. The shared SWAN engine snaps an
-inactive ERA5 vertex to the nearest open contour within its configured snap
-limit, and records that decision in `case_metadata.json` and
-`boundary_forcing.csv`. A corner that is far from an open segment is a
-configuration error, not something to silently repair in v2.
+本次完成静态检查；数值计算、收敛和代理模型精度在服务器阶段验证。

@@ -1,0 +1,36 @@
+{
+  "schema_version": "toy-server-1",
+  "paths": {
+    "wind": "data/wind.nc",
+    "waves": "data/waves.nc",
+    "gebco": "data/gebco_2026.nc",
+    "cases": "cases",
+    "swan_executable": "swan"
+  },
+  "sampling": {
+    "start_utc": "2023-07-01T00:00:00",
+    "end_utc": "2023-07-01T21:00:00",
+    "step_hours": 3
+  },
+  "era5": {
+    "dataset": "reanalysis-era5-single-levels",
+    "area_north_west_south_east": [24.5, 121.0, 23.0, 122.5]
+  },
+  "tiles": [
+    {"id": "E121p5_N23p5", "west": 121.5, "south": 23.5}
+  ],
+  "resolutions": {
+    "1km": {"kind": "metres", "spacing": 1000},
+    "gebco15s": {"kind": "degrees", "spacing": 0.004166666666666667}
+  },
+  "boundary": {
+    "period": "mean",
+    "jonswap_gamma": 3.3,
+    "directional_spread_degrees": 30.0
+  },
+  "grid": {"minimum_wet_depth_m": 0.5, "exception": -999.0},
+  "spectral_grid": {"directions": 36, "lowest_frequency_hz": 0.03453, "highest_frequency_hz": 0.5477526003, "frequency_intervals": 29},
+  "physics_commands": ["GEN3 KOMEN", "FRICTION JONSWAP CONSTANT 0.038", "BREAKING CONSTANT 1.0 0.73"],
+  "output_quantities": ["XP", "YP", "DEPTH", "HSIGN", "TM01", "TM02", "RTP", "DIR", "PDIR", "DSPR", "TMM10", "WIND"],
+  "run": {"workers": 1, "threads_per_case": 1, "timeout_seconds": 600}
+}

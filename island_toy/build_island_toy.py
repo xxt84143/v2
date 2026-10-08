@@ -18,11 +18,11 @@ import xarray as xr
 import sys
 from island_core import (
     HERE, SPLITS, case_plan, generate_forcings, generate_islands, island_to_row,
-    forcing_to_row, load_config, make_island_depth, write_csv,
+    forcing_to_row, load_config, make_island_depth, write_csv, Rectangle,
 )
 
 sys.path.insert(0, str(HERE.parent))
-from v2_core import load_config as load_parent_config, make_grid_spec, resolve_config_path, tile_map  # noqa: E402
+from v2_core import load_config as load_parent_config, make_grid_spec  # noqa: E402
 
 
 def plot_terrain(path: Path, terrain_id: str, lon: np.ndarray, lat: np.ndarray,
@@ -126,13 +126,8 @@ def main() -> None:
     args = parser.parse_args()
     config = load_config(args.config)
     parent = load_parent_config(config["_parent_path"])
-    era5_path = resolve_config_path(parent, parent["paths"]["era5"])
-    with xr.open_dataset(era5_path) as ds:
-        tiles = tile_map(ds)
     tile_id = config["tile_id"]
-    if tile_id not in tiles:
-        raise ValueError(f"Toy tile is not a valid four-wave-corner cell: {tile_id}")
-    tile = tiles[tile_id]
+    tile = Rectangle(**config["tile"])
     islands = generate_islands(config, tile)
     forcings = generate_forcings(config)
     for profile in config["profiles"]:
@@ -141,12 +136,16 @@ def main() -> None:
             write_terrain(HERE, profile, spec, island, config["terrain"], parent, args.overwrite)
     terrain_rows = [island_to_row(item) for item in islands]
     forcing_rows = [forcing_to_row(item) for item in forcings]
+    (HERE / "index" / "forcings").mkdir(parents=True, exist_ok=True)
+    for item in forcings:
+        np.savez_compressed(HERE / "index" / "forcings" / f"{item.forcing_id}.npz",
+                            wave=item.wave.astype(np.float32), wind=item.wind.astype(np.float32))
     cases = case_plan(islands, forcings)
     write_csv(HERE / "index" / "terrains.csv", terrain_rows)
     write_csv(HERE / "index" / "forcings.csv", forcing_rows)
     write_csv(HERE / "index" / "cases.csv", cases)
     manifest = {
-        "schema_version": "island-toy-index-1", "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "schema_version": "island-toy-index-matrix-2", "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "tile_id": tile_id, "profiles": config["profiles"], "terrain_count": len(islands),
         "forcing_count": len(forcings), "case_count": len(cases),
         "terrain_split_counts": {split: sum(item.split == split for item in islands) for split in SPLITS},
@@ -154,7 +153,7 @@ def main() -> None:
         "case_split_counts": {split: sum(row["split"] == split for row in cases) for split in SPLITS},
         "generalization_counts": {name: sum(row["generalization"] == name for row in cases)
                                   for name in ("seen_island_seen_forcing", "new_island", "new_forcing", "new_both")},
-        "coupling_scope": "diagnostic kinematic wind-current relation; SWAN consumes prescribed fields and does not solve ocean circulation",
+        "coupling_scope": "shared spatial background; windsea period and height follow wave age and steepness; zero prescribed current",
     }
     (HERE / "index" / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(manifest, ensure_ascii=False, indent=2))
