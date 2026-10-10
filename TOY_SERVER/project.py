@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import json
 import math
+import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -70,4 +72,12 @@ def write_json(path: Path, value: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
+    # Windows can briefly deny replacement while another process holds the destination.
+    for attempt in range(6):
+        try:
+            temporary.replace(path)
+            return
+        except PermissionError:
+            if os.name != "nt" or attempt == 5:
+                raise
+            time.sleep(.02 * 2**attempt)

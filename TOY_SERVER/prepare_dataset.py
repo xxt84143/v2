@@ -9,7 +9,7 @@ import numpy as np
 from forcing_arrays import model_inputs
 from project import DEFAULT_CONFIG, load_config, path_for
 from swan_inputs import write_json
-from swan_runtime import check_output, fingerprint, inspect_case
+from swan_runtime import CONVERGENCE_FIELDS, SAVED_STATUSES, check_output, fingerprint, inspect_case
 
 
 def pad(array, shape):
@@ -21,10 +21,15 @@ def pad(array, shape):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    parser.add_argument("--profile", default="1km")
+    parser.add_argument("--profile", help="Use the sole experiment profile by default")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     config = load_config(args.config)
+    if args.profile is None:
+        profiles = config["experiment"]["profiles"]
+        if len(profiles) != 1:
+            parser.error("Specify --profile when the experiment has multiple profiles")
+        args.profile = profiles[0]
     root = path_for(config, "cases")
     output = (args.output or Path(config["_base"]) / "dataset" / args.profile).resolve()
     if output.exists() and (output / "manifest.csv").exists():
@@ -38,8 +43,10 @@ def main():
         if not directory.is_relative_to(root) or directory == root:
             raise ValueError("Manifest path escapes case root")
         status = json.loads((directory / "run_status.json").read_text(encoding="utf-8"))
-        if status.get("status") != "completed":
+        if status.get("status") not in SAVED_STATUSES:
             continue
+        if status.get("return_code") != 0 or status.get("print_error"):
+            raise ValueError(f"Saved case has a SWAN execution error: {directory}")
         metadata = inspect_case(directory)
         metrics = check_output(directory, metadata)
         if status.get("input_signature") != fingerprint(metadata["input_hashes"]) or status.get("output_sha256") != metrics["output_sha256"]:
@@ -66,7 +73,8 @@ def main():
         converted.append({"sample_id": row["sample_id"], "case_id": row["case_id"],
                           "terrain_id": row["terrain_id"], "forcing_id": row["forcing_id"],
                           "split": row["split"], "generalization": row["generalization"],
-                          "shard": shard.as_posix(), "padded_ny": shape[0], "padded_nx": shape[1]})
+                          "shard": shard.as_posix(), "padded_ny": shape[0], "padded_nx": shape[1],
+                          **{name: status.get(name) for name in CONVERGENCE_FIELDS}})
     if not converted:
         raise ValueError("No completed cases available")
     if len(shapes) != 1:
@@ -79,7 +87,7 @@ def main():
                                            "sample_count": len(converted), "input_channel_count": len(channel_names),
                                            "input_channels": channel_names, "padded_shape": list(next(iter(shapes))),
                                            "normalization": norm, "generalization_column": "generalization",
-                                           "target": "SWAN HSIGN / hs_scale_m"})
+                                           "target": "SWAN HSIGN / hs_scale_m", "convergence_policy": "record_only"})
     print(f"Converted {len(converted)} completed cases to {output}")
 
 

@@ -160,7 +160,7 @@
       "jonswap_gamma": 3.3
     },
     "profiles": [
-      "1km"
+      "gebco15s"
     ],
     "normalization": {
       "depth_scale_m": 100.0,

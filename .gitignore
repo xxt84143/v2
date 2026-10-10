@@ -57,3 +57,7 @@ Desktop.ini
 /TOY_SERVER/dataset/
 /TOY_SERVER/data/
 /TOY_SERVER/*.zip
+/TOY_SERVER/local_check/
+.swan.lock
+.download.lock
+/TOY_SERVER/inspection/

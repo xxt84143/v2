@@ -6,3 +6,8 @@ cases/
 cases_island/
 dataset/
 *.partial
+local_check/
+.swan.lock
+.download.lock
+inspection/
+.venv/

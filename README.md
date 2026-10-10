@@ -1,50 +1,57 @@
-# v2：SWAN 代理模型的矩阵输入与圆岛实验
+# v2：SWAN 海岛实验与机器学习代理
 
-默认实验使用 0.5°×0.5°窗口、圆岛和浅水裙边。
-原始波浪为 `wave(3,2,2)`，完整九点风为 `wind(2,3,3)`；不再依靠位置命名列或五点补角。
-设计、风浪关系、矩阵顺序和样本划分见 [MATRIX_ISLAND_UPDATE.md](MATRIX_ISLAND_UPDATE.md)。
+在 0.5°×0.5° 窗口中构建人工圆岛和浅水裙边，使用 stationary SWAN 生成标签，再训练 U-Net 预测整张细网格的 Hs。
+SWAN 网格为 **15 arc-sec，121×121 节点**；训练输入补零至 128×128。
 
-## 上传服务器
+## 已完成的基线
 
-直接上传 [TOY_SERVER](TOY_SERVER/README.md)，在其中配置 SWAN 路径。
-包内的生成、运行、ERA5 请求和训练数据转换脚本各有独立入口，通过文件衔接。
-默认圆岛生成独立于 ERA5 和 GEBCO；ERA5 请求作为独立功能保留，并申请 mp1 与 mwp。
-本次仅做静态检查，未生成 case、下载数据、执行测试、运行 SWAN 或训练。
+2026-10-09 的交付数据有 **474 个样本**：train 227、validation 121、test 126。
+MONAI BasicUNet 已训练 80 轮，按 validation 选择第 65 轮权重；独立 FP32 验证 RMSE 为 **0.48424 m**。
+同一验证集的四角 Hs 插值基线 RMSE 为 **0.33171 m**，因此当前模型还有明显改进空间。
+test 尚未推理评估。
 
-## 圆岛开发入口
+[基线结果索引](results/v2_baseline_20261009/README.md) 包含模型权重、训练曲线、121 个验证样本的预测、评估图与科学检查报告。
+原始标签仍来自实际 SWAN 计算，收敛信息按 `record_only` 保存。
+完整生成计划为 608 个 case；当前缺少 134 个纯风生浪 case，覆盖问题见归档报告。
 
-[island_toy/README.md](island_toy/README.md) 提供本地开发目录的接口说明。
-沿用 100 m 平底、圆岛、smoothstep 浅水裙边及新岛/新海况/两者皆新的划分。
-默认 608 cases、1 km。服务器首例验收后再扩大计算规模。
+## 两个独立上传包
 
-训练仍使用外部 U-Net（MONAI BasicUNet 或 segmentation_models.pytorch），
-配置 `paths.model_repo` 与实际环境一致，或安装所选模型库。
-Torch、CUDA 和模型库根据服务器环境单独配置；SWAN 样本生成包不依赖它们。
-模型通道改为 10，原始矩阵保留在 shard 中；转换器当前监督 Hs，其他 bulk 参数保留在 SWAN 原始输出。
+| 包 | 用途 | 下一步 |
+|---|---|---|
+| [TOY_SERVER](TOY_SERVER/README.md) | 生成海岛 case、运行 SWAN、转换数据、可视化检查；独立请求 ERA5 bulk 数据 | 配置 SWAN 路径，按 README 操作 |
+| [TRAIN_SERVER](TRAIN_SERVER/README.md) | 检查数据、训练、续训与评估 | 上传转换后的数据，使用已有可用 Torch 环境 |
 
-```text
-python train_v2.py --profile 1km --data TOY_SERVER/dataset/1km --output training/island_matrix --device cuda
-python evaluate_v2.py --data TOY_SERVER/dataset/1km --checkpoint training/island_matrix/best.pt --split validation --device cuda
-```
+入口脚本通过文件衔接。SWAN 包不依赖 Torch，训练包不依赖 SWAN 或 CDS。
+数据集和 Python 环境不上传 Git；训练结果以版本目录归档。
 
-上述命令供完成服务器计算后使用。本次未执行；旧数据和 checkpoint 需重新生成和训练。
+## 输入与输出
 
-## 保留的 ERA5/真实地形路径
+- `wave(3,2,2)`：四角 Hs、Tp、波向 FROM。
+- `wind(2,3,3)`：九点 u10、v10，直接输入九点矩阵。
+- 矩阵行从南到北，列从西到东；通道顺序由固定数组约定。
+- 基线网络输入依次为 `log_depth, wet_mask, x, y, wave_hs, wave_tp, wave_dir_sin, wave_dir_cos, wind_u10, wind_v10`。
+- 当前监督输出为 Hs；其他 bulk 参数保存在原始 SWAN 输出，尚未加入训练损失。
 
-`build_v2.py`、`run_v2_swan.py`、`prepare_v2_dataset.py` 仍保留旧 ERA5/GEBCO 工作流，
-但 forcing 已改为矩阵，并使用完整九点风。输入路径在根目录 `config.json` 中。
-`build_v2.py all` 生成 `index/forcings/...npz`；索引保存 `forcing_file` 路径。
-`run_v2_swan.py` 仍依赖原工程的外部 `SWAN_YEARLY/swan_batch.py`，该依赖不包含在公开仓库；
-新的圆岛 runner 与 TOY_SERVER 已独立于这个旧接口。
-旧 ERA5 runner 的周期处理需在启用该工作流时结合源字段另行核对；本轮圆岛统一使用 Tp/PEAK。
+矩阵与海况设计见 [MATRIX_ISLAND_UPDATE.md](MATRIX_ISLAND_UPDATE.md)。
+海岛开发入口见 [island_toy/README.md](island_toy/README.md)。
 
-## 文件处理依赖与检查
+## 新实验
 
-根目录 `requirements.txt` 用于生成、转换和可视化，不含 Torch/模型库。
-测试使用合成夹具，独立于原项目大数据；本轮只更新测试源码，未执行测试。
-以后可以在根目录、island_toy、TOY_SERVER 中分别运行 `python -m unittest discover -s tests -v`。
+[`v2.1` 分支](https://github.com/xxt84143/v2/tree/v2.1) 将第一个地形通道替换为有限水深的 `h/λ`。
+它保持其余输入、标签、样本划分和训练设置一致，用于验证相对水深能否改善泛化。
+原基线模型与结果在本分支保留。
 
-## 批量 ERA5 下载
+## ERA5 与保留的开发入口
 
-`TOY_SERVER/request_era5.py` 支持单变量分块、最多五个在途任务、任务 ID 恢复和逐块合并。
-详见 [下载说明](TOY_SERVER/ERA5_DOWNLOAD.md)。本次更新仅做静态检查，未发起 CDS 请求。
+`TOY_SERVER/request_era5.py` 请求 ERA5 single levels 的风与波浪 bulk 参数，支持单变量分块、最多五个在途请求、任务恢复和合并。
+操作见 [ERA5_DOWNLOAD.md](TOY_SERVER/ERA5_DOWNLOAD.md)。认证文件放在用户主目录。
+原 `ERA5Downloading.py` 是波谱下载器，继续保留。
+
+根目录 `build_v2.py`、`run_v2_swan.py`、`prepare_v2_dataset.py` 保留真实地形开发路径；旧 runner 需要仓库外的 `SWAN_YEARLY/swan_batch.py`。
+海岛实验和独立上传包使用各自的 runner。
+
+## 本地检查
+
+2026-10-10：根目录 10 项、island_toy 4 项、TOY_SERVER 13 项检查通过。
+TRAIN_SERVER 的验证范围和实际基线运行情况见其 README 与 [LOCAL_VALIDATION.md](TRAIN_SERVER/LOCAL_VALIDATION.md)。
+运行结果的评估图可直接打开 PNG；海岛 case 检查可生成离线 HTML，或通过 VS Code 转发端口访问。

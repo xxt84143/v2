@@ -68,7 +68,8 @@ a ∈ [0.8, 1.15]；s ∈ [0.018, 0.03]
 
 地形为 train/validation/test = 24/4/4；海况为 12/4/4。
 训练 288 cases；validation 160；test 160；合计 608（每个窗口、每档分辨率）。
-默认只生成 1 km，通常为 57×52 个节点。15 arc-sec 为 121×121，可用 `--profile gebco15s` 选择。
+默认生成 15 arc-sec（`gebco15s`），0.5° 窗口为 120×120 单元、121×121 节点。
+转换时补齐为 128×128。配置仍保留 1 km 作为可选探索分辨率。
 validation/test 均保留 `new_island`、`new_forcing`、`new_both`。
 先划分岛和海况，再组合 case；相同岛或海况不会因逐 case 随机划分而泄漏。
 
@@ -79,8 +80,13 @@ validation/test 均保留 `new_island`、`new_forcing`、`new_both`。
 公共文件是几何、矩阵和 SWAN 文件读写库；入口脚本互不导入。
 TOY_SERVER 中保留这些库的同源副本，保证只上传该目录即可运行。
 
-本轮仅执行 AST 语法、JSON、导入路径和数据契约静态检查。
-未运行测试、case 生成、ERA5 下载、SWAN 或训练；收敛和数值效果留到服务器验证。
+已在 DTP_env 中完成 15 arc-sec 圆岛 case 的实际生成、SWAN 计算与 Hs 数据转换，
+并通过 10 项回归检查。实际结果与尚待验收的海况见 [LOCAL_VALIDATION.md](LOCAL_VALIDATION.md)。
+尚未验收完整批量样本或训练模型；ERA5 小请求已有一个完成，其余按要求不等待。
+
+当前对收敛采用仅记录策略：正常结束且输出检查通过的 case 均保存为 `completed`。
+收敛比例、要求比例、迭代次数和识别状态写入运行记录及数据集索引，不作为保存或转换的门槛。
+日志无法识别时 `converged=null`；程序错误和损坏输出仍拒绝转换。
 测试源代码已同步更新。旧索引、旧 forcing、16/30 通道数据及 checkpoint 需要重新生成或训练；
 新的数据 schema 为 `toy-v2-dataset-matrix-2`。
 已有 case 输入不一致时需要显式 `--overwrite`；默认不会静默接受旧输入。

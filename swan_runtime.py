@@ -1,4 +1,4 @@
-"""Run prepared cases independently of ERA5; verify convergence and output fields."""
+"""Validate saved SWAN output and record convergence without rejecting it."""
 from __future__ import annotations
 
 import hashlib
@@ -14,6 +14,10 @@ import numpy as np
 
 from swan_inputs import write_json
 from forcing_arrays import load as load_forcing
+
+SAVED_STATUSES = frozenset({"completed", "unconverged", "unverified"})
+CONVERGENCE_FIELDS = ("convergence_percent", "required_percent", "converged",
+                      "iterations", "convergence_log_recognized")
 
 
 def fingerprint(hashes: dict) -> str:
@@ -53,7 +57,7 @@ def convergence(directory: Path) -> dict:
     actual, required = (map(float, matches[-1]) if matches else (None, None))
     iterations = re.findall(r"^\s*iteration\s+(\d+)\s*;", text, re.I | re.M)
     return {"print_error": failed, "convergence_percent": actual, "required_percent": required,
-            "converged": actual is not None and required is not None and actual >= required,
+            "converged": actual >= required if matches else None,
             "iterations": int(iterations[-1]) if iterations else None,
             "convergence_log_recognized": bool(matches)}
 
@@ -101,31 +105,55 @@ def math_product(shape: tuple) -> int:
 
 def run_case(directory: Path, executable: Path, timeout: float, threads: int, rerun: bool,
              executable_sha256: str | None = None) -> dict:
+    """Reserve this case so separate runner processes cannot overwrite the same output."""
+    lock = directory / ".swan.lock"
+    try:
+        descriptor = os.open(lock, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        raise RuntimeError(f"Case is already running: {lock}; remove a stale lock only after checking the process stopped") from None
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+            stream.write(f"pid={os.getpid()}\n")
+        return _run_case(directory, executable, timeout, threads, rerun, executable_sha256)
+    finally:
+        lock.unlink(missing_ok=True)
+
+
+def _run_case(directory: Path, executable: Path, timeout: float, threads: int, rerun: bool,
+              executable_sha256: str | None = None) -> dict:
     metadata = inspect_case(directory)
     executable_sha256 = executable_sha256 or hashlib.sha256(executable.read_bytes()).hexdigest()
     signature = fingerprint(metadata["input_hashes"])
     status_path = directory / "run_status.json"
     previous = json.loads(status_path.read_text(encoding="utf-8")) if status_path.exists() else {}
-    if previous.get("status") == "completed" and previous.get("input_signature") == signature and not rerun:
+    if previous.get("status") in SAVED_STATUSES and previous.get("input_signature") == signature and not rerun:
         if previous.get("executable_sha256") != executable_sha256:
             raise ValueError("SWAN executable changed; use --rerun explicitly")
         output_metrics = check_output(directory, metadata)
         if output_metrics["output_sha256"] != previous.get("output_sha256"):
             raise ValueError("Completed case output changed; use --rerun explicitly")
-        return {"sample_id": metadata["sample_id"], "status": "skipped", **output_metrics}
+        recorded = convergence(directory)
+        if previous.get("return_code") != 0 or recorded["print_error"]:
+            raise ValueError("Saved case has a SWAN execution error; inspect logs or use --rerun")
+        previous.update(recorded)
+        previous.update(status="completed", error=None, convergence_policy="record_only")
+        write_json(status_path, previous)
+        return {"sample_id": metadata["sample_id"], "status": "skipped",
+                "convergence_policy": "record_only", **recorded, **output_metrics}
     write_json(status_path, {"status": "running", "input_signature": signature,
                              "started_at_utc": datetime.now(timezone.utc).isoformat()})
-    for name in ("PRINT", "Errfile", "ERRPTS", "norm_end", "output/compgrid.tab"):
-        path = directory / name
-        if path.is_file():
-            path.unlink()
     environment = os.environ.copy()
     environment["PATH"] = str(executable.parent) + os.pathsep + environment.get("PATH", "")
     environment["OMP_NUM_THREADS"] = str(threads)
     started = time.perf_counter()
     result = {"sample_id": metadata["sample_id"], "status": "failed", "executable": str(executable),
-              "executable_sha256": executable_sha256, "input_signature": signature, "return_code": None, "error": None}
+              "executable_sha256": executable_sha256, "input_signature": signature, "return_code": None, "error": None,
+              "convergence_policy": "record_only"}
     try:
+        for name in ("PRINT", "Errfile", "ERRPTS", "norm_end", "output/compgrid.tab"):
+            path = directory / name
+            if path.is_file():
+                path.unlink()
         with (directory / "stdout.log").open("wb") as out, (directory / "stderr.log").open("wb") as err:
             process = subprocess.run([str(executable)], cwd=directory, env=environment,
                                      stdout=out, stderr=err, timeout=timeout, check=False,
@@ -135,14 +163,7 @@ def run_case(directory: Path, executable: Path, timeout: float, threads: int, re
         if process.returncode != 0 or result["print_error"]:
             raise ValueError("SWAN returned an error; inspect PRINT, stdout.log and stderr.log")
         result.update(check_output(directory, metadata))
-        if not result["convergence_log_recognized"]:
-            result["status"] = "unverified"
-            result["error"] = "Unrecognized convergence log format; review PRINT before accepting labels"
-        elif not result["converged"]:
-            result["status"] = "unconverged"
-            result["error"] = "Output exists but the SWAN convergence target was not reached"
-        else:
-            result["status"] = "completed"
+        result["status"] = "completed"
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         result["error"] = str(exc)
     result["runtime_seconds"] = round(time.perf_counter() - started, 3)

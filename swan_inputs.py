@@ -43,7 +43,7 @@ def render_input(case_id, lon, lat, wave, wind, config):
     validate(wave, wind)
     nx, ny = len(lon) - 1, len(lat) - 1
     spectrum = config["spectral_grid"]
-    lines = [f"PROJECT '{case_id[:16]}' 'ISLAND'", "MODE STATIONARY TWODIMENSIONAL", "SET NAUTICAL",
+    lines = [f"PROJECT '{case_id[:16]}' 'ISLD'", "MODE STATIONARY TWODIMENSIONAL", "SET NAUTICAL",
              "COORD SPHERICAL CCM",
              f"CGRID REG {lon[0]:.10f} {lat[0]:.10f} 0 0.5 0.5 {nx} {ny} "
              f"CIRCLE {spectrum['directions']} {spectrum['lowest_frequency_hz']} "
@@ -56,6 +56,8 @@ def render_input(case_id, lon, lat, wave, wind, config):
              f"BOUND SHAPESPEC JONSWAP {config['boundary']['jonswap_gamma']} PEAK DSPR DEGREES"]
     lines.extend(boundary_blocks(wave, nx, ny, config["boundary"]["directional_spread_degrees"]))
     lines.extend(config["physics_commands"])
+    # Default four-digit BLOCK output rounds geographic coordinates too much for grid validation.
+    lines.append("OUTPUT OPTIONS BLOCK 8 6")
     lines.append("BLOCK 'COMPGRID' NOHEADER 'output/compgrid.tab' LAYOUT 3 " + " ".join(config["output_quantities"]))
     return "\n".join(lines + ["COMPUTE", "STOP", ""])
 

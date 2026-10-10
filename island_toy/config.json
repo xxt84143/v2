@@ -3,7 +3,7 @@
   "parent_config": "../config.json",
   "tile_id": "E121p5_N23p5",
   "profiles": [
-    "1km"
+    "gebco15s"
   ],
   "seed": 20260924,
   "terrain": {

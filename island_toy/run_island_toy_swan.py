@@ -71,7 +71,7 @@ def prepare(config_path, profile, case_ids=None, limit=None, overwrite=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=HERE / "config.json")
-    parser.add_argument("--profile", default="1km")
+    parser.add_argument("--profile", help="Use the sole configured profile by default")
     parser.add_argument("command", choices=("check", "prepare", "run", "status"))
     parser.add_argument("--case-id", action="append")
     parser.add_argument("--limit", type=int)
@@ -81,6 +81,11 @@ def main():
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--rerun", action="store_true")
     args = parser.parse_args()
+    if args.profile is None:
+        profiles = load_config(args.config)["profiles"]
+        if len(profiles) != 1:
+            parser.error("Specify --profile when multiple profiles are configured")
+        args.profile = profiles[0]
     if args.command == "prepare":
         prepare(args.config, args.profile, args.case_id, args.limit, args.overwrite)
         return

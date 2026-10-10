@@ -13,6 +13,7 @@ from island_core import HERE, load_config, read_csv, write_csv
 
 sys.path.insert(0, str(HERE.parent))
 from v2_core import load_config as load_parent_config, padded_shape, read_swan_block  # noqa: E402
+from swan_runtime import CONVERGENCE_FIELDS, SAVED_STATUSES
 
 
 def pad(array: np.ndarray, target: tuple[int, int]) -> np.ndarray:
@@ -29,10 +30,14 @@ def inputs(wave, wind, depth, wet, config):
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, default=HERE / "config.json")
-    parser.add_argument("--profile", default="1km")
+    parser.add_argument("--profile", help="Use the sole configured profile by default")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     config = load_config(args.config); parent = load_parent_config(config["_parent_path"])
+    if args.profile is None:
+        if len(config["profiles"]) != 1:
+            parser.error("Specify --profile when multiple profiles are configured")
+        args.profile = config["profiles"][0]
     output = args.output or (HERE / "dataset" / args.profile)
     cases = {row["case_id"]: row for row in read_csv(HERE / "index" / "cases.csv")}
     run_manifest = HERE / "runs" / args.profile / "manifest.csv"
@@ -43,7 +48,10 @@ def main() -> None:
         result = HERE / "runs" / args.profile / case["case_id"] / parent["output"]["filename"]
         status_path = result.parent.parent / "run_status.json"
         if not result.is_file() or not status_path.is_file(): continue
-        if json.loads(status_path.read_text(encoding="utf-8"))["status"] != "completed": continue
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+        if status.get("status") not in SAVED_STATUSES: continue
+        if status.get("return_code") != 0 or status.get("print_error"):
+            raise ValueError(f"Saved case has a SWAN execution error: {result.parent.parent}")
         from swan_runtime import inspect_case, check_output, fingerprint
         directory = result.parent.parent
         metadata = inspect_case(directory)
@@ -63,13 +71,15 @@ def main() -> None:
         np.savez_compressed(shard, wave=wave, wind=wind, x=pad(x, shape), y=pad((np.where(valid, hs, 0) / float(config["normalization"]["hs_scale_m"]))[None], shape),
                             mask=pad(valid[None].astype(np.uint8), shape), raw_shape=np.asarray(depth.shape))
         rows.append({**{key: case[key] for key in ("case_id", "terrain_id", "forcing_id", "split", "generalization")},
-                     "shard": shard.relative_to(output).as_posix(), "padded_ny": shape[0], "padded_nx": shape[1]})
+                     "shard": shard.relative_to(output).as_posix(), "padded_ny": shape[0], "padded_nx": shape[1],
+                     **{name: status.get(name) for name in CONVERGENCE_FIELDS}})
     if not rows: raise RuntimeError("No completed island SWAN outputs")
     write_csv(output / "manifest.csv", rows)
     metadata = {"schema_version": "toy-v2-dataset-matrix-2", "profile": args.profile, "sample_count": len(rows),
                 "input_channel_count": len(channel_names), "input_channels": channel_names,
                 "padded_shape": [int(rows[0]["padded_ny"]), int(rows[0]["padded_nx"])],
-                "normalization": config["normalization"], "generalization_column": "generalization"}
+                "normalization": config["normalization"], "generalization_column": "generalization",
+                "convergence_policy": "record_only"}
     (output / "metadata.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"wrote {len(rows)} island toy shards to {output}")
 

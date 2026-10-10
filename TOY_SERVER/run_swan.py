@@ -1,4 +1,4 @@
-"""Run prepared cases independently of ERA5; verify convergence and output fields."""
+"""Run prepared cases, validate output and record convergence."""
 from __future__ import annotations
 
 import argparse
@@ -82,7 +82,7 @@ def main() -> int:
                 result = {"case_directory": str(futures[future]), "status": "failed", "error": str(exc)}
             failed += result["status"] not in {"completed", "skipped"}
             print(json.dumps(result, ensure_ascii=False), flush=True)
-    print(f"Finished: {len(directories)-failed} passed/skipped, {failed} failed/unconverged/unverified", flush=True)
+    print(f"Finished: {len(directories)-failed} completed/skipped, {failed} failed; convergence recorded only", flush=True)
     return 1 if failed else 0
 
 
