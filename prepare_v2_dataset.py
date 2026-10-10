@@ -9,6 +9,8 @@ from pathlib import Path
 import numpy as np
 import xarray as xr
 
+from wave_geometry import dataset_schema, feature_definition
+
 from v2_core import (
     HERE, load_config, padded_shape, read_csv,
     read_swan_block, write_csv,
@@ -80,7 +82,7 @@ def main() -> None:
         shard = output / tile_id / f"{row['case_id']}.npz"
         shard.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(
-            shard, wave=wave, wind=wind, x=pad(x, shape), y=pad(target.astype(np.float32), shape),
+            shard, wave=wave, wind=wind, depth_m=np.where(wet, depth, 0).astype(np.float32), x=pad(x, shape), y=pad(target.astype(np.float32), shape),
             mask=pad(valid[None].astype(np.uint8), shape), raw_shape=np.asarray(depth.shape),
         )
         manifest.append({
@@ -96,7 +98,8 @@ def main() -> None:
         raise ValueError(f"Profile {args.profile} produced incompatible padded shapes: {sorted(padded_shapes)}")
     write_csv(output / "manifest.csv", manifest)
     metadata = {
-        "schema_version": "toy-v2-dataset-matrix-2", "profile": args.profile,
+        "schema_version": dataset_schema(config["normalization"]), "version": "2.1",
+        "terrain_feature": feature_definition(config["normalization"]), "profile": args.profile,
         "sample_count": len(manifest), "input_channel_count": len(channel_names),
         "input_channels": channel_names, "target": "SWAN HSIGN / hs_scale_m",
         "padded_shape": list(next(iter(padded_shapes))), "pad_policy": "north/east zero pad to model_pad_multiple",

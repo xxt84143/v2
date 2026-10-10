@@ -9,9 +9,14 @@ from pathlib import Path
 
 import numpy as np
 
+from forcing_arrays import terrain_feature
+from wave_geometry import BASELINE_SCHEMA, RELATIVE_DEPTH_SCHEMA, feature_definition
+
 HERE = Path(__file__).resolve().parent
 CHANNELS = ["log_depth", "wet_mask", "x", "y", "wave_hs", "wave_tp",
             "wave_dir_sin", "wave_dir_cos", "wind_u10", "wind_v10"]
+RELATIVE_DEPTH_CHANNELS = ["relative_depth", *CHANNELS[1:]]
+DATASET_CHANNELS = {BASELINE_SCHEMA: CHANNELS, RELATIVE_DEPTH_SCHEMA: RELATIVE_DEPTH_CHANNELS}
 SPLITS = ("train", "validation", "test")
 
 
@@ -67,9 +72,15 @@ def validate_dataset(root, require_splits=True):
     root = Path(root).expanduser().resolve()
     metadata = json.loads((root / "metadata.json").read_text(encoding="utf-8"))
     rows = read_csv(root / "manifest.csv")
-    if metadata.get("schema_version") != "toy-v2-dataset-matrix-2":
+    expected_channels = DATASET_CHANNELS.get(metadata.get("schema_version"))
+    if expected_channels is None:
         raise ValueError("Regenerate the dataset with the current TOY_SERVER converter")
-    if metadata.get("input_channels") != CHANNELS or metadata.get("input_channel_count") != 10:
+    relative_terrain = metadata["schema_version"] == RELATIVE_DEPTH_SCHEMA
+    if relative_terrain and metadata.get("terrain_feature") != feature_definition(metadata["normalization"]):
+        raise ValueError("Relative-depth feature definition does not match normalization")
+    if relative_terrain and metadata.get("normalization", {}).get("terrain_channel") != "relative_depth":
+        raise ValueError("Relative-depth schema requires terrain_channel=relative_depth")
+    if metadata.get("input_channels") != expected_channels or metadata.get("input_channel_count") != 10:
         raise ValueError("Expected the current ten-channel, nine-wind-node / four-wave-node contract")
     if metadata.get("target") != "SWAN HSIGN / hs_scale_m":
         raise ValueError("This package currently trains normalized Hs only")
@@ -125,6 +136,8 @@ def validate_dataset(root, require_splits=True):
         path = shard_path(root, row["shard"])
         with np.load(path, allow_pickle=False) as shard:
             arrays = {name: shard[name] for name in ("x", "y", "mask", "raw_shape", "wave", "wind")}
+            if relative_terrain:
+                arrays["depth_m"] = shard["depth_m"]
         x, y, mask = (arrays[name] for name in ("x", "y", "mask"))
         if x.shape != (10, *shape) or y.shape != (1, *shape) or mask.shape != (1, *shape):
             raise ValueError(f"{path}: incorrect x/y/mask shape")
@@ -152,13 +165,21 @@ def validate_dataset(root, require_splits=True):
             raise ValueError(f"{path}: invalid boundary Hs/period/direction")
         if metadata.get("profile") == "gebco15s" and (ny, nx) != (121, 121):
             raise ValueError(f"{path}: 15 arc-sec over 0.5 degrees requires 121x121 nodes")
+        if relative_terrain:
+            depth = arrays["depth_m"]
+            wet = mask[0, :ny, :nx].astype(bool)
+            if depth.shape != (ny, nx) or not np.isfinite(depth).all() or np.any(depth[wet] <= 0) or np.any(depth[~wet] != 0):
+                raise ValueError(f"{path}: invalid raw depth field")
+            expected, _ = terrain_feature(wave, depth, wet, metadata["normalization"])
+            if not np.allclose(x[0, :ny, :nx], expected, rtol=2e-6, atol=2e-7):
+                raise ValueError(f"{path}: terrain channel does not match finite-depth dispersion")
         wet_pixels[row["split"]] += int(mask.sum())
         convergence[row.get("converged", "").lower() or "unknown"] += 1
         signature.update(row["shard"].encode())
         signature.update(digest_file(path).encode())
     report = {"dataset": str(root), "profile": metadata["profile"], "samples": len(rows),
               "splits": {name: counts[name] for name in SPLITS}, "padded_shape": list(shape),
-              "input_channels": CHANNELS, "target": "Hs", "wet_pixels": dict(wet_pixels),
+              "input_channels": expected_channels, "terrain_channel": expected_channels[0], "target": "Hs", "wet_pixels": dict(wet_pixels),
               "convergence": dict(convergence), "convergence_policy": "record_only",
               "sha256": signature.hexdigest()}
     return metadata, rows, report

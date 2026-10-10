@@ -1,264 +1,121 @@
-# TRAIN_SERVER：圆岛实验的独立机器学习训练包
+# TRAIN_SERVER v2.1：h/λ 对照实验训练包
 
-上传整个文件夹或解压 `TRAIN_SERVER.zip`。默认使用 MONAI BasicUNet，
-与 v2 当前模型一致：2D U-Net、GroupNorm、10 个输入通道、1 个 Hs 输出通道。
-模型库从 pip 安装，配置中没有本机盘符。
-验收范围见 [LOCAL_VALIDATION.md](LOCAL_VALIDATION.md)。
+上传整个目录或 `TRAIN_SERVER_v2.1.zip`，建议解压为 `~/TRAIN_SERVER_v21`。
+网络、损失与训练设置沿用 v2：MONAI BasicUNet、GroupNorm、10 个输入通道、1 个 Hs 输出。
+本版本增加有限水深相对水深通道的数据迁移与检查。
 
-## 你现在接下来怎么做（当前 AutoDL 实例）
+## 当前进度
 
-2026-10-10 当前进度（v2 基线）：
+原模型已完成 80 轮训练，最佳轮次 65；独立 FP32 validation RMSE 为 0.48424 m。
+现有数据有 474 个样本，train / validation / test 为 227 / 121 / 126。
+原结果已归档。v2.1 的 80 轮 GPU 对照尚未运行。
+本地已检查完整数据迁移和 25 项训练包测试；它们验证实现和运行流程，不能证明精度提升。
 
-- 多余的 Torch 2.10.0 下载已停止。
-- 使用镜像已有的 `/root/miniconda3/bin/python`，Torch 2.12.1+cu130。
-- MONAI 1.5.2 已安装，`pip check` 已通过。
-- RTX 2080 Ti 上完整 U-Net 的前向、反向、优化器更新已通过。
-- 正式训练已完成 80 轮；474 个样本按 227 / 121 / 126 分为 train / validation / test。
-- 第 65 轮权重在独立 FP32 validation 上的 RMSE 为 0.48424 m，test 尚未评估。
-- 结果见仓库 `results/v2_baseline_20261009/`；下面的命令用于新服务器复现。
+## 1. 使用服务器已有环境
 
-### 第一步：把当前终端切回已验证的解释器
-
-如果提示符前有 `(.venv)`，执行：
+之前验证的 AutoDL 解释器为 `/root/miniconda3/bin/python`，含可用的 Torch 与 MONAI。
+进入新包目录，确认当前实例的环境：
 
 ```bash
-deactivate
+cd ~/TRAIN_SERVER_v21
+/root/miniconda3/bin/python -c "import sys,torch,monai; print(sys.executable); print(torch.__version__,monai.__version__,torch.cuda.is_available())"
 ```
 
-然后执行：
+以下命令里的 `python` 应指向这个已验证的解释器。
+若提示符处仍激活旧的空 `.venv`，先 `deactivate`，或直接使用上面的 Python 绝对路径。
+新服务器先检查环境，再按 `requirements.txt` 安装缺少的依赖：
 
 ```bash
-cd ~/TRAIN_SERVER
-python -c "import sys,torch; print(sys.executable); print(torch.__version__, torch.cuda.is_available())"
+python -m pip install -r requirements.txt
+python -m pip check
+python check_environment.py --output environment_check.json
 ```
 
-应显示 `/root/miniconda3/bin/python`、`2.12.1+cu130` 和 `True`。
-VS Code 使用“Python: Select Interpreter”，选择 `/root/miniconda3/bin/python`。
-当前实例已经装好依赖，可以继续下面的数据步骤。
+`check_environment.py` 会检查完整网络的前向、反向和优化器更新。
+VS Code 的 Python 解释器也选择同一路径。
 
-### 第二步：传输正式数据
+## 2. 原数据迁移到独立目录
 
-在 SWAN 服务器运行第 1 节的转换与打包命令。
-将 `dataset_gebco15s.tar.gz` 上传到当前 AutoDL 的 `/root/autodl-tmp/` 数据盘，然后解压：
+服务器原数据若仍在 `/root/autodl-tmp/toy_data/gebco15s`，直接执行：
 
 ```bash
-mkdir -p /root/autodl-tmp/toy_data
-tar -xzf /root/autodl-tmp/dataset_gebco15s.tar.gz -C /root/autodl-tmp/toy_data
+python migrate_dataset.py --data /root/autodl-tmp/toy_data/gebco15s --output /root/autodl-tmp/toy_data_v21/gebco15s
+python check_dataset.py --data /root/autodl-tmp/toy_data_v21/gebco15s --output dataset_check_v21.json
 ```
 
-应得到 `/root/autodl-tmp/toy_data/gebco15s/metadata.json`、`manifest.csv` 和各 `.npz`。
-本节把数据与训练结果放在 AutoDL 数据盘，代码仍位于 `/root/TRAIN_SERVER`。
-如果传输的是整个 `gebco15s` 文件夹，将它放到 `toy_data/`，可以跳过解压。
+否则先上传 `dataset_gebco15s.tar.gz`，解压到 `toy_data/`。
+检查结果应为 474 个样本，`terrain_channel=relative_depth`，三个集合分别为 227、121、126。
+迁移仅改 `x[0]`、增加 `depth_m`，原 manifest、标签和其余通道保持一致；不需要 SWAN 或 Torch。
+目标目录必须是空目录，原数据保留。
 
-### 第三步：检查数据、短跑两轮
+**旧深度特征有恢复限制：**反解只能恢复被旧 cap 截断后的水深。
+本批人工圆岛水深不超过 100 m，符合迁移条件。
+若新数据含更深且已被截断的水深，应在 SWAN 服务器用新 `prepare_dataset.py` 从原 case 转换。
+
+## 3. 两轮短跑，再做 80 轮对照
 
 ```bash
-cd ~/TRAIN_SERVER
-python check_dataset.py --data /root/autodl-tmp/toy_data/gebco15s
-python train.py --data /root/autodl-tmp/toy_data/gebco15s --check-model
-python train.py --data /root/autodl-tmp/toy_data/gebco15s --output /root/autodl-tmp/toy_runs/smoke --epochs 2 --num-workers 0
+python train.py --data /root/autodl-tmp/toy_data_v21/gebco15s --check-model
+python train.py --data /root/autodl-tmp/toy_data_v21/gebco15s --output /root/autodl-tmp/toy_runs/smoke_v21 --epochs 2 --num-workers 0
 ```
 
-检查要求 train、validation、test 三个集合都有样本。
-如果目前只转换了一个训练样本，继续完成 SWAN 计算与转换，直到三个集合均有样本。
-短跑正常结束后，应有 `best.pt`、`last.pt`、`history.csv` 和 `summary.json`。
-`smoke` 是一次短跑的独立目录；重复短跑使用新名称，如 `smoke2`。
-
-### 第四步：正式训练并保存日志
+短跑结束应有 `best.pt`、`last.pt`、`history.csv` 和 `summary.json`。
+之后在独立目录运行正式对照：
 
 ```bash
 mkdir -p /root/autodl-tmp/toy_runs
-cd ~/TRAIN_SERVER
-nohup /root/miniconda3/bin/python -u train.py --data /root/autodl-tmp/toy_data/gebco15s --output /root/autodl-tmp/toy_runs/hs_unet > /root/autodl-tmp/toy_runs/hs_unet.log 2>&1 < /dev/null &
-tail -f /root/autodl-tmp/toy_runs/hs_unet.log
+nohup /root/miniconda3/bin/python -u train.py --data /root/autodl-tmp/toy_data_v21/gebco15s --output /root/autodl-tmp/toy_runs/hs_unet_v21 --epochs 80 > /root/autodl-tmp/toy_runs/hs_unet_v21.log 2>&1 < /dev/null &
+tail -f /root/autodl-tmp/toy_runs/hs_unet_v21.log
 ```
 
-默认训练 80 轮。`tail -f` 用于查看日志，按 `Ctrl+C` 退出日志查看，后台训练会继续。
-如果遇到显存不足，新实验降低 `--batch-size`，例如 4。
-
-中断后在同一目录续训：
+`tail -f` 是查看日志；日志停止增加时，结合 `summary.json` 的 `epoch` 判断是否完成。
+`Ctrl+C` 结束日志查看，后台训练继续。
+重复完整实验选择新输出目录；续训使用该实验自己的 `last.pt`：
 
 ```bash
-python train.py --data /root/autodl-tmp/toy_data/gebco15s --output /root/autodl-tmp/toy_runs/hs_unet --resume /root/autodl-tmp/toy_runs/hs_unet/last.pt --epochs 80
+python train.py --data /root/autodl-tmp/toy_data_v21/gebco15s --output /root/autodl-tmp/toy_runs/hs_unet_v21 --resume /root/autodl-tmp/toy_runs/hs_unet_v21/last.pt --epochs 80
 ```
 
-若原实验修改了 batch size 等参数，续训时保持这些参数一致。
+不能用原 `hs_unet/best.pt` 续训 h/λ 数据；数据签名和通道检查会拒绝这种组合。
 
-### 第五步：评估与下载结果
+## 4. 只评估 validation，下载结果比较
 
 ```bash
-python evaluate.py --data /root/autodl-tmp/toy_data/gebco15s --checkpoint /root/autodl-tmp/toy_runs/hs_unet/best.pt --split validation --save-predictions
+python evaluate.py --data /root/autodl-tmp/toy_data_v21/gebco15s --checkpoint /root/autodl-tmp/toy_runs/hs_unet_v21/best.pt --split validation --save-predictions
 ```
 
-评估图、指标和预测位于 `/root/autodl-tmp/toy_runs/hs_unet/evaluation/validation/`。
-下载该文件夹即可在本机查看 PNG、CSV 和 Markdown 报告。
-确定模型后，将 `--split validation` 改为 `--split test` 做最终评估。
+下载整个 `hs_unet_v21/`，本地打开 `evaluation/validation/report.md`、PNG 和指标 CSV。
+与原模型比较整体 RMSE、Bias、插值基线 skill，以及 new_island / new_forcing / new_both 三组误差。
+保持原 seed=20261009、80 轮、batch=8、AdamW、lr=3e-4、weight_decay=1e-4、CUDA AMP 和网络配置。
+本次先保留 test，选定方案后再做最终评估。
+单个 seed 的改善需由后续多 seed 试验确认。
 
-## 1. 两台服务器通过数据文件衔接
+## 数据约定与文件职责
 
-SWAN 服务器在 `TOY_SERVER` 中计算并转换：
+波浪矩阵为 `wave(3,2,2)`，风为 `wind(2,3,3)`；空间行从南到北，列从西到东。
+新 schema 是 `toy-v2.1-dataset-relative-depth-1`；输入顺序为：
 
-```bash
-cd ~/TOY_SERVER
-source .venv/bin/activate
-python prepare_dataset.py --profile gebco15s
-tar -czf dataset_gebco15s.tar.gz -C dataset gebco15s
+```text
+relative_depth, wet_mask, x, y, wave_hs, wave_tp,
+wave_dir_sin, wave_dir_cos, wind_u10, wind_v10
 ```
 
-转换器会检查已保存结果的输入、输出校验和；未收敛结果按当前策略保留并记录。
-转换时应等目标 case 的运行结束，避免读到正在写入的状态。
-转换器要求新输出目录；若先前只转换了部分样本，应使用 `--output dataset_full/gebco15s`，
-相应打包命令改为 `tar -czf dataset_gebco15s.tar.gz -C dataset_full gebco15s`。
-
-将 `dataset_gebco15s.tar.gz` 下载到本机，再上传到训练服务器的 `TRAIN_SERVER`。
-训练服务器执行：
-
-```bash
-cd ~/TRAIN_SERVER
-mkdir -p dataset
-tar -xzf dataset_gebco15s.tar.gz -C dataset
-```
-
-最终必须是 `dataset/gebco15s/metadata.json`、`manifest.csv` 和全部相对路径指向的 `.npz`。
-保持 manifest 的 train / validation / test 与泛化组划分，训练端不会重新随机分组。
-数据包只需要转换后的文件；数据规模以实际成功转换数量为准，完整默认计划是 608 个。
-本包不附带正式数据。现有独立交付的压缩包有 474 个样本，包含三个划分；生成计划为 608 个 case。
-
-## 2. 先装环境，再占用 GPU 训练
-
-建议 Linux、Python 3.10–3.12。先检查云端镜像已有的 PyTorch，避免重复下载几个 GB 的 CUDA 依赖：
-
-```bash
-python -c "import sys,torch; print(sys.executable); print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
-nvidia-smi
-```
-
-如果镜像已有可用 Torch，可以在该解释器中安装剩余依赖。
-`requirements.txt` 保留已满足 MONAI 依赖条件的 Torch，不再强制降级到 2.10.0：
-
-```bash
-cd ~/TRAIN_SERVER
-python -m pip install -r requirements.txt
-python -m pip check
-python check_environment.py --output environment_check.json
-python -m pip freeze > installed_requirements.txt
-```
-
-当前 AutoDL 实例的镜像解释器为 `/root/miniconda3/bin/python`，预装 Torch 2.12.1+cu130。
-2026-10-09 已验证 RTX 2080 Ti 上 CUDA 前向与反向正常，完整模型检查见验收记录。
-如当前终端已激活之前创建的 `.venv`，先执行 `deactivate` 再检查镜像解释器。
-可以直接用 `/root/miniconda3/bin/python` 执行以上命令。
-
-只有镜像缺少合适 Torch，或需要单独隔离实验时，才创建新的环境并安装已验收的 2.10.0：
-
-```bash
-cd ~/TRAIN_SERVER
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install --upgrade pip
-nvidia-smi
-python -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cu130
-python -m pip install -r requirements.txt
-python -m pip check
-python check_environment.py --output environment_check.json
-python -m pip freeze > installed_requirements.txt
-```
-
-这里的 `cu130` 对应 CUDA 13.0 版 PyTorch，需训练服务器驱动和 GPU 支持。
-另一台服务器的环境需要单独确认，SWAN 服务器的 CUDA 状态不能替代这项检查。
-PyTorch wheel 自带运行所需 CUDA 库，此项目不编译 CUDA 扩展；通常无需额外安装完整 Toolkit。
-若现有驱动/GPU 适合 CUDA 12.8，可按官方命令将索引改为 `cu128`，版本仍保持 `torch==2.10.0`。
-Torch 2.10.0 是本包首次 CPU 验收的版本，并非训练算法必须使用的版本。
-保留云端镜像的其他版本后，需要执行 `check_environment.py` 验证完整模型。
-安装命令见
-[PyTorch 官方版本表](https://pytorch.org/get-started/previous-versions/#v2100)，
-模型依赖见 [MONAI 1.5.2 安装文档](https://monai.readthedocs.io/en/1.5.2/installation.html)。
-
-如果使用独立 venv，新开 SSH 终端后重新执行 `source ~/TRAIN_SERVER/.venv/bin/activate`。
-如果使用当前 AutoDL 镜像，VS Code 远程解释器选择 `/root/miniconda3/bin/python`；
-使用独立 venv 时选择该环境的实际绝对路径。
-
-## 3. 先检查，再短跑，再完整训练
-
-完整数据检查不依赖 Torch，也可在 SWAN 服务器或 CPU 上执行：
-
-```bash
-python check_dataset.py --data dataset/gebco15s --output dataset_check.json
-python train.py --check-model
-python train.py --epochs 2 --output runs/smoke --num-workers 0
-python train.py --output runs/hs_unet
-```
-
-短跑使用独立输出目录，确认读取数据、损失、保存 checkpoint 和验证流程。
-默认 80 epochs、batch size 8、AdamW、学习率 3e-4、CUDA AMP；修改 `config.json` 或命令行参数。
-正式训练默认要求 CUDA；CPU 检查可显式使用 `--device cpu --no-amp`。
-显存不足时首先减小 `--batch-size`，不要改变样本空间网格。
-
-`check_dataset.py` 会扫描所有 shard，检查数据完整性、形状、浮点数、mask、padding、
-原始风浪矩阵、15 arc-sec 的 121×121 网格，以及新岛/新海况划分中的数据泄漏。
-数据内容 SHA256 写入检查报告和 checkpoint，以便发现传输缺漏和续训期间的数据变化。
-若只是检查一次部分交付，可加 `--allow-incomplete-splits`；训练入口仍要求三个集合非空。
-收敛信息只计数，不作为训练筛选条件。
-
-每个 epoch 保存 `last.pt`、`history.csv` 和 `summary.json`，验证集变好时保存 `best.pt`。
-`last.pt` 包含优化器与 AMP scaler；日志写入和 checkpoint 替换使用临时文件。
-每轮按固定 seed 重建随机顺序，便于复现实验；不同 GPU 的浮点执行可能产生小差异。
-训练过程只使用 train 和 validation。test 在独立评估步骤运行。
-
-SSH 断线时，可以在服务器上用 `tmux` 保持训练：
-
-```bash
-tmux new -s toy_train
-# 使用独立 venv 时才需要 source ~/TRAIN_SERVER/.venv/bin/activate
-cd ~/TRAIN_SERVER
-python -u train.py --output runs/hs_unet > train.log 2>&1
-```
-
-用 `Ctrl+B`，再按 `D` 离开会话；`tmux attach -t toy_train` 返回。
-在另一个终端执行 `tail -f ~/TRAIN_SERVER/train.log` 查看进度。
-如果服务器没有 tmux，可用 `nohup python -u train.py --output runs/hs_unet > train.log 2>&1 < /dev/null &`。
-
-## 4. 断点续训和评估
-
-```bash
-python train.py --output runs/hs_unet --resume runs/hs_unet/last.pt --epochs 120
-python evaluate.py --data dataset/gebco15s --checkpoint runs/hs_unet/best.pt --split validation --save-predictions
-python evaluate.py --data dataset/gebco15s --checkpoint runs/hs_unet/best.pt --split test --save-predictions
-```
-
-续训的 `--epochs` 是总轮数；模型、数据、batch size、学习率、seed、AMP 设置需与原实验一致。
-续训回到原输出目录，完整新实验使用新目录，避免覆盖已有模型。
-验证集用于调整模型；确定模型后再运行 test。
-
-评估恢复米制 Hs，输出 MAE、RMSE、Bias、R²、逐 case 和逐泛化组指标、预测图与训练曲线。
-同时比较“将四角边界 Hs 双线性插值到细网格”的简单基线；纯风生浪边界为零，评估报告会显示这一点。
-训练/验证损失按全部有效海水格点平均；评估同时给出按像素统计与按 case 等权统计。
-默认保留原始模型输出，包括负 Hs，并统计负值比例；如需截断可明确加 `--clip-min-m 0`。
-评估产生的 PNG 与 `.npz` 可以下载查看，不需要在服务器上运行浏览器。
-
-## 数据与目标约定
-
-原始输入仍为 `wave(3,2,2)`：Hs、Tp、波向 FROM；`wind(2,3,3)`：u10、v10。
-空间行从南到北，列从西到东。转换后的 `x(10,128,128)` 按顺序为：
-log_depth、wet_mask、x、y、wave_hs、wave_tp、wave_dir_sin、wave_dir_cos、wind_u10、wind_v10。
-原始有效网格为 121×121，其余是零 padding。模型直接读取已转换特征，不再次归一化或改变深度特征。
-`y(1,128,128)` 是 Hs / hs_scale_m，`mask` 排除陆地与 padding。
-
-当前标签仅有 Hs。Tp、平均周期、波向与方向展宽仍保留在 SWAN 原始结果中；
-多参数训练需先扩展转换器的数据目标和各参数损失，不能直接把本包输出通道数调大。
-
-## 文件职责
+有效网格 121×121，padding 至 128×128，陆地和 padding 的 h/λ 为 0。
+`y` 是 Hs / hs_scale_m，`mask` 排除陆地和 padding。
+纯风生浪采用 8 秒参考周期编码水深；这个 λ 不代表实际风生浪波长。
+旧 `toy-v2-dataset-matrix-2` / `log_depth` 数据仍可读取，适合复现原基线。
 
 | 文件 | 职责 |
 |---|---|
-| `config.json` | 数据与输出路径、模型宽度、训练超参数 |
-| `check_environment.py` | 执行一次真实前向、反向与优化器更新 |
-| `check_dataset.py` | 检查交付数据 |
-| `train.py` | 训练与断点续训 |
-| `evaluate.py` | 加载 checkpoint，评估并输出图表 |
-| `training_core.py` | 配置与数据契约库 |
-| `model_factory.py` | MONAI U-Net 构造 |
-| `tests/` | 数据约定与训练/续训/评估回归检查 |
+| `config.json` | 路径、网络与训练设置；默认指向 relative_depth 数据 |
+| `migrate_dataset.py` | 将原数据重编码到新目录 |
+| `wave_geometry.py` | 求解有限水深色散关系，计算 h/λ |
+| `forcing_arrays.py` | 原始矩阵与特征转换规则 |
+| `training_core.py`、`check_dataset.py` | 数据约定、签名与逐样本检查 |
+| `model_factory.py`、`train.py` | 构建 U-Net、训练与续训 |
+| `evaluate.py` | 独立评估、输出图与逐样本指标 |
+| `check_environment.py` | 环境与模型运行检查 |
+| `tests/` | 物理关系、迁移、训练／续训／评估检查 |
 
-入口脚本互不导入，计算服务器与训练服务器通过文件衔接。
-评估代码基于 v2 的 `evaluate_v2.py` 整理，训练端无需安装 SWAN、ERA5/CDS 客户端或访问开发仓库。
+各入口独立调用，共享计算函数；训练服务器不需要 SWAN 或 ERA5 认证。
+收敛信息继续仅记录，不作为样本筛选条件。

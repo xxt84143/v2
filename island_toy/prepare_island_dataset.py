@@ -14,6 +14,7 @@ from island_core import HERE, load_config, read_csv, write_csv
 sys.path.insert(0, str(HERE.parent))
 from v2_core import load_config as load_parent_config, padded_shape, read_swan_block  # noqa: E402
 from swan_runtime import CONVERGENCE_FIELDS, SAVED_STATUSES
+from wave_geometry import dataset_schema, feature_definition
 
 
 def pad(array: np.ndarray, target: tuple[int, int]) -> np.ndarray:
@@ -68,14 +69,16 @@ def main() -> None:
         if names != channel_names: raise AssertionError("channel order changed")
         shape = padded_shape(depth.shape, int(parent["grid"]["model_pad_multiple"]))
         shard = output / f"{case['case_id']}.npz"; shard.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(shard, wave=wave, wind=wind, x=pad(x, shape), y=pad((np.where(valid, hs, 0) / float(config["normalization"]["hs_scale_m"]))[None], shape),
+        np.savez_compressed(shard, wave=wave, wind=wind, depth_m=np.where(wet, depth, 0).astype(np.float32), x=pad(x, shape), y=pad((np.where(valid, hs, 0) / float(config["normalization"]["hs_scale_m"]))[None].astype(np.float32), shape),
                             mask=pad(valid[None].astype(np.uint8), shape), raw_shape=np.asarray(depth.shape))
-        rows.append({**{key: case[key] for key in ("case_id", "terrain_id", "forcing_id", "split", "generalization")},
+        rows.append({"sample_id": f"{args.profile}__{case['case_id']}", **{key: case[key] for key in ("case_id", "terrain_id", "forcing_id", "split", "generalization")},
                      "shard": shard.relative_to(output).as_posix(), "padded_ny": shape[0], "padded_nx": shape[1],
                      **{name: status.get(name) for name in CONVERGENCE_FIELDS}})
     if not rows: raise RuntimeError("No completed island SWAN outputs")
     write_csv(output / "manifest.csv", rows)
-    metadata = {"schema_version": "toy-v2-dataset-matrix-2", "profile": args.profile, "sample_count": len(rows),
+    metadata = {"schema_version": dataset_schema(config["normalization"]), "version": "2.1",
+                "terrain_feature": feature_definition(config["normalization"]),
+                "target": "SWAN HSIGN / hs_scale_m", "profile": args.profile, "sample_count": len(rows),
                 "input_channel_count": len(channel_names), "input_channels": channel_names,
                 "padded_shape": [int(rows[0]["padded_ny"]), int(rows[0]["padded_nx"])],
                 "normalization": config["normalization"], "generalization_column": "generalization",

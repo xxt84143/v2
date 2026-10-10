@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from forcing_arrays import model_inputs
+from wave_geometry import dataset_schema, feature_definition
 from project import DEFAULT_CONFIG, load_config, path_for
 from swan_inputs import write_json
 from swan_runtime import CONVERGENCE_FIELDS, SAVED_STATUSES, check_output, fingerprint, inspect_case
@@ -67,7 +68,7 @@ def main():
         shard = Path(row["tile_id"]) / f"{row['case_id']}.npz"
         destination = output / shard
         destination.parent.mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(destination, wave=wave, wind=wind, x=pad(x, shape),
+        np.savez_compressed(destination, wave=wave, wind=wind, depth_m=np.where(wet, depth, 0).astype(np.float32), x=pad(x, shape),
                             y=pad((np.where(wet, hs, 0)[None] / norm["hs_scale_m"]).astype(np.float32), shape),
                             mask=pad(wet[None].astype(np.uint8), shape), raw_shape=np.asarray(depth.shape))
         converted.append({"sample_id": row["sample_id"], "case_id": row["case_id"],
@@ -83,7 +84,7 @@ def main():
         writer = csv.DictWriter(stream, fieldnames=list(converted[0]))
         writer.writeheader()
         writer.writerows(converted)
-    write_json(output / "metadata.json", {"schema_version": "toy-v2-dataset-matrix-2", "profile": args.profile,
+    write_json(output / "metadata.json", {"schema_version": dataset_schema(norm), "version": "2.1", "terrain_feature": feature_definition(norm), "profile": args.profile,
                                            "sample_count": len(converted), "input_channel_count": len(channel_names),
                                            "input_channels": channel_names, "padded_shape": list(next(iter(shapes))),
                                            "normalization": norm, "generalization_column": "generalization",

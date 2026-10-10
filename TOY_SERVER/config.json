@@ -168,7 +168,11 @@
       "period_scale_s": 15.0,
       "wind_scale_mps": 25.0,
       "current_scale_mps": 1.0,
-      "depth_reference_m": 10.0
+      "depth_reference_m": 10.0,
+      "terrain_channel": "relative_depth",
+      "relative_depth_gravity_mps2": 9.81,
+      "zero_boundary_reference_period_s": 8.0
     }
-  }
+  },
+  "version": "2.1"
 }

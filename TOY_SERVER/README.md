@@ -1,5 +1,21 @@
 # TOY_SERVER：独立圆岛实验上传包
 
+## v2.1 地形通道
+
+本版本默认使用 `experiment.normalization.terrain_channel=relative_depth`。
+`prepare_dataset.py` 从输入 Tp 与原始水深计算有限水深 h/λ，并在 shard 中保存 `depth_m`。
+SWAN 输入、网格、海况与收敛记录策略沿用原设置；这次特征实验可以复用已有 SWAN 结果。
+已有 case 转换时选择新的输出目录：
+
+```bash
+python prepare_dataset.py --profile gebco15s --output dataset_v21/gebco15s
+```
+
+如果只有旧训练数据压缩包，在训练服务器用 `migrate_dataset.py` 迁移即可。
+新 schema 为 `toy-v2.1-dataset-relative-depth-1`，第一个通道为 `relative_depth`。
+其余九个通道和 Hs 标签沿用原约定；纯风生浪采用 8 秒参考周期编码水深。
+将 `terrain_channel` 设为 `log_depth` 可转换原基线数据，但应选择独立输出目录。
+
 上传整个目录即可运行。默认采用与仓库 `island_toy` 相同的圆岛、浅水裙边和海况定义。
 生成海岛样本无需真实地形或 ERA5。九点风直接输入，四角波浪采用 3×2×2 矩阵。
 默认 SWAN 网格为 **15 arc-sec**：0.5° 窗口含 120×120 网格单元、121×121 节点。

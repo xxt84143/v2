@@ -1,0 +1,13 @@
+{
+  "epoch": 2,
+  "samples": {
+    "train": 227,
+    "validation": 121,
+    "test": 126
+  },
+  "best_validation_loss": 0.009458995328691643,
+  "best_validation_rmse_m": 0.48628683224748237,
+  "test_evaluated": false,
+  "selection_rule": "validation only",
+  "device": "cpu"
+}

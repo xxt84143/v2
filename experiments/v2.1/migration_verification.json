@@ -1,0 +1,17 @@
+{
+  "status": "passed",
+  "cases": 474,
+  "splits": {
+    "train": 227,
+    "validation": 121,
+    "test": 126
+  },
+  "source_sha256": "b9758c251cccbc9989c0d94842794ad4ced2b9ea64f19ebf38b6c5ef3597d69a",
+  "relative_depth_sha256": "036af0418e21fb3f74ad8373e3e09f5bc1a2e6e43901e824b5c407827b6b9d39",
+  "only_x0_changed": true,
+  "other_channels_and_targets_bitwise_equal": true,
+  "manifest_bytes_identical": true,
+  "max_depth_recovery_error_m": 2.288818359375e-05,
+  "max_terrain_channel_change": 1.3914003372192383,
+  "zero_boundary_reference_cases": 18
+}

@@ -3,6 +3,8 @@ from pathlib import Path
 
 import numpy as np
 
+from wave_geometry import relative_depth, feature_definition
+
 WAVE_SHAPE = (3, 2, 2)  # Hs, characteristic period, nautical direction FROM
 WIND_SHAPE = (2, 3, 3)  # eastward u10, northward v10; all nine nodes observed
 
@@ -39,25 +41,40 @@ def resize(field, shape):
     return bottom * (1 - wy[:, None]) + top * wy[:, None]
 
 
+def terrain_feature(wave, depth, wet, norm):
+    """Encode depth using the declared baseline or finite-depth wave geometry."""
+    depth, wet = np.asarray(depth), np.asarray(wet, dtype=bool)
+    if depth.ndim != 2 or wet.shape != depth.shape:
+        raise ValueError("depth and wet must be matching two-dimensional fields")
+    definition = feature_definition(norm)
+    if definition["name"] == "relative_depth":
+        periods = resize(np.asarray(wave)[1], depth.shape)
+        if not np.any(np.asarray(wave)[0] > 0):
+            periods = np.full(depth.shape, definition["zero_boundary_reference_period_s"])
+        return relative_depth(depth, periods, wet, definition["gravity_mps2"]), "relative_depth"
+    cap = float(norm.get("depth_cap_m", norm.get("depth_scale_m", 100)))
+    reference = float(norm.get("depth_reference_m", 10))
+    if not np.isfinite([cap, reference]).all() or cap <= 0 or reference <= 0:
+        raise ValueError("Depth normalization scales must be positive and finite")
+    water_depth = np.where(wet, np.clip(depth, 0, cap), 0)
+    return np.log1p(water_depth / reference) / np.log1p(cap / reference), "log_depth"
+
+
 def model_inputs(wave, wind, depth, wet, norm, period_name="period"):
     wave, wind = validate(wave, wind)
     depth = np.asarray(depth)
     shape = depth.shape
     yy, xx = np.meshgrid(np.linspace(-1, 1, shape[0]), np.linspace(-1, 1, shape[1]), indexing="ij")
-    cap = float(norm.get("depth_cap_m", norm.get("depth_scale_m", 100)))
-    reference = float(norm.get("depth_reference_m", 10))
-    if cap <= 0 or reference <= 0:
-        raise ValueError("Depth normalization scales must be positive")
-    water_depth = np.where(wet, np.clip(depth, 0, cap), 0)
+    terrain, terrain_name = terrain_feature(wave, depth, wet, norm)
     angle = np.deg2rad(wave[2])
     sine, cosine = resize(np.sin(angle), shape), resize(np.cos(angle), shape)
     length = np.hypot(sine, cosine)
     if np.any(length < 1e-8):
         raise ValueError("Opposite wave directions cannot define one interpolated mean direction")
-    values = [np.log1p(water_depth / reference) / np.log1p(cap / reference), wet, xx, yy,
+    values = [terrain, wet, xx, yy,
               resize(wave[0], shape) / float(norm["hs_scale_m"]),
               resize(wave[1], shape) / float(norm["period_scale_s"]), sine / length, cosine / length,
               *list(resize(wind, shape) / float(norm["wind_scale_mps"]))]
-    names = ["log_depth", "wet_mask", "x", "y", "wave_hs", f"wave_{period_name}",
+    names = [terrain_name, "wet_mask", "x", "y", "wave_hs", f"wave_{period_name}",
              "wave_dir_sin", "wave_dir_cos", "wind_u10", "wind_v10"]
     return np.stack(values).astype(np.float32), names

@@ -1,57 +1,63 @@
-# v2：SWAN 海岛实验与机器学习代理
+# v2.1：有限水深 h/λ 地形通道实验
 
-在 0.5°×0.5° 窗口中构建人工圆岛和浅水裙边，使用 stationary SWAN 生成标签，再训练 U-Net 预测整张细网格的 Hs。
-SWAN 网格为 **15 arc-sec，121×121 节点**；训练输入补零至 128×128。
+本版本将 U-Net 第一个输入通道由 `log_depth` 改为 **`relative_depth = h/λ`**。
+λ 根据四角输入 Tp 和局地水深，通过线性波色散关系计算：
 
-## 已完成的基线
+$$
+\omega = 2\pi/T_p,\quad \omega^2=gk\tanh(kh),\quad h/\lambda=kh/(2\pi).
+$$
 
-2026-10-09 的交付数据有 **474 个样本**：train 227、validation 121、test 126。
-MONAI BasicUNet 已训练 80 轮，按 validation 选择第 65 轮权重；独立 FP32 验证 RMSE 为 **0.48424 m**。
-同一验证集的四角 Hs 插值基线 RMSE 为 **0.33171 m**，因此当前模型还有明显改进空间。
-test 尚未推理评估。
+相同水深对短波与长波的影响不同；这个通道把水深与周期的关系直接呈现给网络。
+只使用输入信息，不使用 SWAN 输出周期。
+完整说明见 [实验方案](experiments/v2.1/EXPERIMENT.md)。
 
-[基线结果索引](results/v2_baseline_20261009/README.md) 包含模型权重、训练曲线、121 个验证样本的预测、评估图与科学检查报告。
-原始标签仍来自实际 SWAN 计算，收敛信息按 `record_only` 保存。
-完整生成计划为 608 个 case；当前缺少 134 个纯风生浪 case，覆盖问题见归档报告。
+## 本次状态
 
-## 两个独立上传包
+- 原 80 轮基线及其权重、验证图、预测和检查报告已归档到 [基线结果](results/v2_baseline_20261009/README.md)。
+- 已对全部 474 个样本完成重编码检查：其余 9 个通道、标签和原始风浪矩阵不变，manifest 字节一致。
+- 根目录、海岛目录和两个上传包共 52 项检查通过，包含色散关系、数据迁移和 CPU 训练／续训／评估检查。
+- 完整数据的两轮 CPU 短跑和 121 个 validation case 的独立评估已完成，见 [短跑结果](results/v2.1_cpu_smoke_20261010/README.md)。
+- 新的 80 轮 GPU 对照训练尚未运行；当前不能判断模型精度是否提升。
 
-| 包 | 用途 | 下一步 |
-|---|---|---|
-| [TOY_SERVER](TOY_SERVER/README.md) | 生成海岛 case、运行 SWAN、转换数据、可视化检查；独立请求 ERA5 bulk 数据 | 配置 SWAN 路径，按 README 操作 |
-| [TRAIN_SERVER](TRAIN_SERVER/README.md) | 检查数据、训练、续训与评估 | 上传转换后的数据，使用已有可用 Torch 环境 |
+## 接下来如何试验
 
-入口脚本通过文件衔接。SWAN 包不依赖 Torch，训练包不依赖 SWAN 或 CDS。
-数据集和 Python 环境不上传 Git；训练结果以版本目录归档。
+上传本分支的 [TRAIN_SERVER](TRAIN_SERVER/README.md)，使用原数据生成新的相对水深数据目录：
 
-## 输入与输出
+```bash
+cd ~/TRAIN_SERVER_v21
+python migrate_dataset.py --data /root/autodl-tmp/toy_data/gebco15s --output /root/autodl-tmp/toy_data_v21/gebco15s
+python check_dataset.py --data /root/autodl-tmp/toy_data_v21/gebco15s
+python train.py --data /root/autodl-tmp/toy_data_v21/gebco15s --output /root/autodl-tmp/toy_runs/hs_unet_v21 --epochs 80
+python evaluate.py --data /root/autodl-tmp/toy_data_v21/gebco15s --checkpoint /root/autodl-tmp/toy_runs/hs_unet_v21/best.pt --split validation --save-predictions
+```
 
-- `wave(3,2,2)`：四角 Hs、Tp、波向 FROM。
-- `wind(2,3,3)`：九点 u10、v10，直接输入九点矩阵。
-- 矩阵行从南到北，列从西到东；通道顺序由固定数组约定。
-- 基线网络输入依次为 `log_depth, wet_mask, x, y, wave_hs, wave_tp, wave_dir_sin, wave_dir_cos, wind_u10, wind_v10`。
-- 当前监督输出为 Hs；其他 bulk 参数保存在原始 SWAN 输出，尚未加入训练损失。
+当前 AutoDL 已验证的解释器为 `/root/miniconda3/bin/python`；使用它时可以将命令中的 `python` 替换为该绝对路径。
+原数据、基线权重和 test 保留；新实验使用新输出目录。
+详细设置、比较指标和迁移限制见 [实验方案](experiments/v2.1/EXPERIMENT.md)。
 
+## 数据与模型约定
+
+| 项目 | 约定 |
+|---|---|
+| SWAN | stationary，人工圆岛，15 arc-sec，121×121 节点 |
+| 原始波浪输入 | `wave(3,2,2)`：Hs、Tp、波向 FROM |
+| 原始风输入 | `wind(2,3,3)`：直接使用九点 u10、v10 |
+| 网络输入 | 10×128×128；第一个通道为 h/λ，其余顺序沿用 v2 |
+| 输出 | 当前仍为 Hs；其他 bulk 参数保存在原始 SWAN 文件 |
+| 划分 | train 227、validation 121、test 126，保持原 manifest |
+
+新转换器保留原始 `depth_m`，地形特征不再按 `depth_cap_m` 截断。
+旧数据若曾截断超过 cap 的真实水深，不能从旧通道恢复，应从原 case 重新转换。
+当前人工海岛水深不超过原 cap=100 m；恢复误差最大约 0.000023 m。
+
+纯风生浪输入 Hs 全零时没有入射波长；采用明确记录的 **8 秒参考周期**编码水深。
+这个参考 λ 不代表实际风生浪波长。其余样本使用输入 Tp。
+
+## 上传包与其他入口
+
+[TOY_SERVER](TOY_SERVER/README.md) 同步支持新通道；只需重新转换已有 case，无需为这次特征实验重跑 SWAN。
+[TRAIN_SERVER](TRAIN_SERVER/README.md) 可读取两个版本的数据，检查 schema、通道与数据签名。
+旧基线 checkpoint 不能续训新的相对水深数据。
+
+ERA5 bulk 下载入口继续独立保留，原波谱下载器 `ERA5Downloading.py` 保持原文件。
 矩阵与海况设计见 [MATRIX_ISLAND_UPDATE.md](MATRIX_ISLAND_UPDATE.md)。
-海岛开发入口见 [island_toy/README.md](island_toy/README.md)。
-
-## 新实验
-
-[`v2.1` 分支](https://github.com/xxt84143/v2/tree/v2.1) 将第一个地形通道替换为有限水深的 `h/λ`。
-它保持其余输入、标签、样本划分和训练设置一致，用于验证相对水深能否改善泛化。
-原基线模型与结果在本分支保留。
-
-## ERA5 与保留的开发入口
-
-`TOY_SERVER/request_era5.py` 请求 ERA5 single levels 的风与波浪 bulk 参数，支持单变量分块、最多五个在途请求、任务恢复和合并。
-操作见 [ERA5_DOWNLOAD.md](TOY_SERVER/ERA5_DOWNLOAD.md)。认证文件放在用户主目录。
-原 `ERA5Downloading.py` 是波谱下载器，继续保留。
-
-根目录 `build_v2.py`、`run_v2_swan.py`、`prepare_v2_dataset.py` 保留真实地形开发路径；旧 runner 需要仓库外的 `SWAN_YEARLY/swan_batch.py`。
-海岛实验和独立上传包使用各自的 runner。
-
-## 本地检查
-
-2026-10-10：根目录 10 项、island_toy 4 项、TOY_SERVER 13 项检查通过。
-TRAIN_SERVER 的验证范围和实际基线运行情况见其 README 与 [LOCAL_VALIDATION.md](TRAIN_SERVER/LOCAL_VALIDATION.md)。
-运行结果的评估图可直接打开 PNG；海岛 case 检查可生成离线 HTML，或通过 VS Code 转发端口访问。
