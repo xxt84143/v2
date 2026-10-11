@@ -2,7 +2,7 @@
   "schema_version": "toy-training-1",
   "paths": {
     "dataset": "dataset/relative_depth/gebco15s",
-    "output": "runs/hs_relative_depth",
+    "output": "runs/hs_relative_depth_v211",
     "model_repo": null
   },
   "model": {
@@ -25,5 +25,5 @@
     "seed": 20261009,
     "amp": true
   },
-  "version": "2.1"
+  "version": "2.1.1"
 }

@@ -21,6 +21,9 @@ def load_config(path: Path) -> dict:
     config = json.loads(path.read_text(encoding="utf-8"))
     if config.get("schema_version") != "toy-server-1":
         raise ValueError("Expected schema_version=toy-server-1")
+    generator = config.get("experiment", {}).get("generator")
+    if generator not in (None, "broad-coverage-1"):
+        raise ValueError(f"Unsupported experiment generator: {generator}")
     config["_base"] = str(path.parent)
     if config["boundary"]["period"] not in PERIODS:
         raise ValueError("boundary.period must be mean (ERA5 mp1) or peak (ERA5 pp1d)")

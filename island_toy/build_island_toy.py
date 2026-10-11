@@ -51,7 +51,7 @@ def plot_terrain(path: Path, terrain_id: str, lon: np.ndarray, lat: np.ndarray,
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}\N{DEGREE SIGN}E"))
     ax.yaxis.set_major_formatter(FuncFormatter(lambda v, _: f"{v:g}\N{DEGREE SIGN}N"))
     ax.set_title(
-        f"Circular-island water depth (m)\n{terrain_id} | radius={island.radius_m / 1000:.2f} km, "
+        f"{island.shape.title()} island water depth (m)\n{terrain_id} | equal-area radius={island.radius_m / 1000:.2f} km, "
         f"skirt={island.skirt_width_m / 1000:.2f} km",
         fontsize=14, fontweight="bold", pad=10,
     )
@@ -140,7 +140,7 @@ def main() -> None:
     for item in forcings:
         np.savez_compressed(HERE / "index" / "forcings" / f"{item.forcing_id}.npz",
                             wave=item.wave.astype(np.float32), wind=item.wind.astype(np.float32))
-    cases = case_plan(islands, forcings)
+    cases = case_plan(islands, forcings, config)
     write_csv(HERE / "index" / "terrains.csv", terrain_rows)
     write_csv(HERE / "index" / "forcings.csv", forcing_rows)
     write_csv(HERE / "index" / "cases.csv", cases)

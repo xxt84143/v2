@@ -1,4 +1,4 @@
-"""Pure geometry/forcing helpers for the circular-island toy experiment."""
+"""Geometry/forcing helpers, including the opt-in v2.1.1 coverage generator."""
 
 from __future__ import annotations
 
@@ -27,6 +27,10 @@ class Island:
     radius_m: float
     skirt_width_m: float
     shore_depth_m: float
+    shape: str = "circle"
+    semi_major_m: float = 0.0
+    semi_minor_m: float = 0.0
+    orientation_deg: float = 0.0  # counterclockwise from east
 
 
 @dataclass(frozen=True)
@@ -107,6 +111,9 @@ def domain_size_m(tile) -> tuple[float, float]:
 
 
 def generate_islands(config: dict[str, Any], tile) -> list[Island]:
+    if config.get("generator") == "broad-coverage-1":
+        from coverage_generator import generate_terrains
+        return generate_terrains(config, tile)
     settings = config["terrain"]
     rng = np.random.default_rng(int(config["seed"]))
     width, height = domain_size_m(tile)
@@ -138,10 +145,22 @@ def make_island_depth(lon: np.ndarray, lat: np.ndarray, island: Island, base_dep
     xx, yy = np.meshgrid(lon, lat)
     dx, dy = local_xy_m(xx, yy, island.center_lon, island.center_lat)
     distance = np.hypot(dx, dy)
-    wet = distance > island.radius_m
+    shore_radius = island.radius_m
+    if island.shape == "ellipse":
+        angle = math.radians(island.orientation_deg)
+        along = dx * math.cos(angle) + dy * math.sin(angle)
+        across = -dx * math.sin(angle) + dy * math.cos(angle)
+        theta = np.arctan2(across, along)
+        a, b = island.semi_major_m, island.semi_minor_m
+        if not (a >= b > 0):
+            raise ValueError("Ellipse requires positive semi_major_m >= semi_minor_m")
+        shore_radius = a * b / np.hypot(b * np.cos(theta), a * np.sin(theta))
+    elif island.shape != "circle":
+        raise ValueError("Only circle and ellipse terrains are supported")
+    wet = distance > shore_radius
     depth = np.full(distance.shape, exception, dtype=np.float32)
-    outer = island.radius_m + island.skirt_width_m
-    transition = np.clip((distance - island.radius_m) / island.skirt_width_m, 0.0, 1.0)
+    outer = shore_radius + island.skirt_width_m
+    transition = np.clip((distance - shore_radius) / island.skirt_width_m, 0.0, 1.0)
     smooth = transition * transition * (3.0 - 2.0 * transition)
     water_depth = island.shore_depth_m + (base_depth_m - island.shore_depth_m) * smooth
     depth[wet] = np.minimum(water_depth[wet], base_depth_m).astype(np.float32)
@@ -151,6 +170,9 @@ def make_island_depth(lon: np.ndarray, lat: np.ndarray, island: Island, base_dep
 
 def generate_forcings(config: dict[str, Any]) -> list[CoupledForcing]:
     """Prescribed joint sea states, not a fitted ERA5 climatology or ocean model."""
+    if config.get("generator") == "broad-coverage-1":
+        from coverage_generator import generate_conditions
+        return generate_conditions(config)
     settings = config["forcing"]
     families = ("swell_no_wind", "aligned_windsea", "swell_weak_wind", "wind_only")
     g = 9.81
@@ -208,7 +230,10 @@ def generate_forcings(config: dict[str, Any]) -> list[CoupledForcing]:
     return result
 
 
-def case_plan(islands: list[Island], forcings: list[CoupledForcing]) -> list[dict[str, Any]]:
+def case_plan(islands: list[Island], forcings: list[CoupledForcing], config=None) -> list[dict[str, Any]]:
+    if config and config.get("generator") == "broad-coverage-1":
+        from coverage_generator import sparse_plan
+        return sparse_plan(islands, forcings, config)
     terrain = {split: [item for item in islands if item.split == split] for split in SPLITS}
     forcing = {split: [item for item in forcings if item.split == split] for split in SPLITS}
     pairs: list[tuple[str, str, list[Island], list[CoupledForcing]]] = [
@@ -237,7 +262,10 @@ def case_plan(islands: list[Island], forcings: list[CoupledForcing]) -> list[dic
 def island_to_row(item: Island) -> dict[str, Any]:
     return {"terrain_id": item.terrain_id, "terrain_split": item.split, "center_lon": item.center_lon,
             "center_lat": item.center_lat, "radius_m": item.radius_m, "skirt_width_m": item.skirt_width_m,
-            "shore_depth_m": item.shore_depth_m}
+            "shore_depth_m": item.shore_depth_m, "terrain_shape": item.shape,
+            "semi_major_m": item.semi_major_m or item.radius_m,
+            "semi_minor_m": item.semi_minor_m or item.radius_m,
+            "orientation_deg": item.orientation_deg}
 
 
 def forcing_to_row(item: CoupledForcing) -> dict[str, Any]:

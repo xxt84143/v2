@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from island_core import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
+from effective_cases import experiment_settings
 from project import DEFAULT_CONFIG, load_config, path_for
 from swan_inputs import grid_coordinates
 from swan_runtime import check_output, inspect_case
@@ -244,6 +245,7 @@ def main():
     if not profile or profile not in config["resolutions"]:
         parser.error("Specify a valid --profile")
     root = (args.cases or path_for(config, "cases")).resolve()
+    experiment = experiment_settings(config, root)
     output = args.output.resolve()
     if output == root or output.is_relative_to(root):
         parser.error("Put the report outside the case root")
@@ -266,7 +268,7 @@ def main():
             forcings[key] = {"image": image, "family": forcing.family, "split": forcing.split,
                              "wave_age": forcing.wave_age, "steepness": forcing.steepness,
                              **forcing_values(forcing.wave, forcing.wind)}
-        for case in case_plan(islands, sea_states):
+        for case in case_plan(islands, sea_states, experiment):
             records.append({**case, "sample_id": f"{profile}__{tile['id']}__{case['case_id']}",
                             "tile_id": tile["id"], "source": "plan", "status": "planned", "run": {},
                             "terrain_key": f"{tile['id']}__{case['terrain_id']}",

@@ -97,6 +97,16 @@ def validate_dataset(root, require_splits=True):
     if not required.issubset(rows[0]):
         raise ValueError(f"Missing manifest columns: {sorted(required.difference(rows[0]))}")
     counts = Counter(row["split"] for row in rows)
+    if metadata.get("generator") == "broad-coverage-1":
+        target_count = metadata.get("target_effective_train_cases")
+        if isinstance(target_count, bool) or not isinstance(target_count, int) or target_count <= 0:
+            raise ValueError("Broad coverage dataset requires a positive effective training target")
+        reached = counts["train"] >= target_count
+        if (metadata.get("effective_train_count") != counts["train"]
+                or metadata.get("training_target_reached") is not reached):
+            raise ValueError("Effective training count/target metadata differs from the manifest")
+        if not reached and not metadata.get("partial_export_requested"):
+            raise ValueError("Effective training target was not reached")
     if set(counts).difference(SPLITS):
         raise ValueError(f"Unknown splits: {counts}")
     if require_splits and any(not counts[name] for name in SPLITS):

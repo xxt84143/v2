@@ -14,6 +14,9 @@ from island_core import Rectangle, case_plan, generate_forcings, generate_island
 class IslandToyTests(unittest.TestCase):
     def setUp(self):
         self.config = load_config(ROOT / "config.json")
+        self.config.pop("generator", None)
+        self.config["terrain"]["count"] = {"train": 24, "validation": 4, "test": 4}
+        self.config["forcing"]["count"] = {"train": 12, "validation": 4, "test": 4}
         self.islands = generate_islands(self.config, Rectangle(**self.config["tile"]))
         self.forcings = generate_forcings(self.config)
         self.cases = case_plan(self.islands, self.forcings)

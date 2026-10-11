@@ -61,3 +61,4 @@ Desktop.ini
 .swan.lock
 .download.lock
 /TOY_SERVER/inspection/
+/TOY_SERVER/coverage_plan.json

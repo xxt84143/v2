@@ -93,9 +93,9 @@
     "seed": 20260924,
     "terrain": {
       "count": {
-        "train": 24,
-        "validation": 4,
-        "test": 4
+        "train": 512,
+        "validation": 64,
+        "test": 64
       },
       "base_depth_m": 100.0,
       "island_radius_km": [
@@ -110,13 +110,17 @@
         3.0,
         15.0
       ],
-      "outer_clearance_km": 1.0
+      "outer_clearance_km": 1.0,
+      "ellipse_axis_ratio": [
+        1.2,
+        2.5
+      ]
     },
     "forcing": {
       "count": {
-        "train": 12,
-        "validation": 4,
-        "test": 4
+        "train": 1024,
+        "validation": 64,
+        "test": 64
       },
       "windsea_speed_mps": [
         8.0,
@@ -153,11 +157,67 @@
         90.0,
         180.0
       ],
-      "maximum_relative_gradient": 0.08,
-      "maximum_direction_gradient_deg": 4.0,
+      "maximum_relative_gradient": 0.15,
+      "maximum_direction_gradient_deg": 8.0,
       "maximum_steepness": 0.04,
       "directional_spread_deg": 30.0,
-      "jonswap_gamma": 3.3
+      "jonswap_gamma": 3.3,
+      "coverage": {
+        "period_s": [
+          3.0,
+          20.0
+        ],
+        "swell_period_s": [
+          6.0,
+          20.0
+        ],
+        "swell_height_m": [
+          0.2,
+          8.0
+        ],
+        "near_calm_height_m": [
+          0.01,
+          0.2
+        ],
+        "maximum_hs_m": 8.0,
+        "maximum_wind_speed_mps": 25.0,
+        "windsea_speed_mps": [
+          4.0,
+          25.0
+        ],
+        "wind_only_speed_mps": [
+          1.0,
+          25.0
+        ],
+        "near_calm_wind_speed_mps": [
+          0.0,
+          2.0
+        ],
+        "weak_wind_speed_mps": [
+          0.5,
+          5.0
+        ],
+        "moderate_wind_speed_mps": [
+          5.0,
+          12.0
+        ],
+        "strong_wind_speed_mps": [
+          12.0,
+          25.0
+        ],
+        "young_wave_age": [
+          0.6,
+          0.9
+        ],
+        "mature_wave_age": [
+          0.9,
+          1.3
+        ],
+        "windsea_steepness": [
+          0.003,
+          0.035
+        ]
+      }
     },
     "profiles": [
       "gebco15s"
@@ -172,7 +232,14 @@
       "terrain_channel": "relative_depth",
       "relative_depth_gravity_mps2": 9.81,
       "zero_boundary_reference_period_s": 8.0
+    },
+    "generator": "broad-coverage-1",
+    "case_sampling": {
+      "target_effective_train_cases": 16384,
+      "training_reserve_fraction": 0.25,
+      "evaluation_cases_per_group": 512,
+      "require_converged": false
     }
   },
-  "version": "2.1"
+  "version": "2.1.1"
 }

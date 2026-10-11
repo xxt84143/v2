@@ -1,0 +1,14 @@
+[
+  {
+    "file": "TOY_SERVER_v2.1.1.zip",
+    "files": 29,
+    "bytes": 82471,
+    "sha256": "fc322cac8af5e42dba1a3f121182241d15135ac6f538c5aae545d94a7f83a938"
+  },
+  {
+    "file": "TRAIN_SERVER_v2.1.1.zip",
+    "files": 19,
+    "bytes": 40896,
+    "sha256": "7984cedbd1ac7d8d983aec32dadea8b97758f4a3b7595647ad7d7ef61f81794a"
+  }
+]

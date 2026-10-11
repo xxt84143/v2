@@ -91,6 +91,12 @@ def prepare_case(directory, sample_id, case, profile, tile, lon, lat, depth, wet
                 "family": case["family"], "boundary_policy": "one shared field on all edges; incoming components only",
                 "physics_commands": config["physics_commands"], "spectral_grid": config["spectral_grid"],
                 "output_quantities": config["output_quantities"], "input_hashes": hashes}
+    if case.get("generator") == "broad-coverage-1":
+        metadata.update({name: case[name] for name in
+                         ("generator", "candidate_rank", "terrain_shape", "center_lon", "center_lat",
+                          "radius_m", "skirt_width_m", "shore_depth_m", "semi_major_m", "semi_minor_m",
+                          "orientation_deg")})
+        metadata["version"] = "2.1.1"
     previous_path = directory / "case.json"
     if directory.exists() and not overwrite:
         previous = json.loads(previous_path.read_text(encoding="utf-8")) if previous_path.is_file() else {}

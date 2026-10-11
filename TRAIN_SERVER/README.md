@@ -1,3 +1,5 @@
+> v2.1.1 当前生成与操作说明见 [V2_1_1.md](V2_1_1.md)；下文保留 v2/v2.1 历史设计或操作记录。
+
 # TRAIN_SERVER v2.1：h/λ 对照实验训练包
 
 上传整个目录或 `TRAIN_SERVER_v2.1.zip`，建议解压为 `~/TRAIN_SERVER_v21`。

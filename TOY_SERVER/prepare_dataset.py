@@ -1,7 +1,6 @@
 """Convert completed self-contained SWAN cases to Hs training shards."""
 import argparse
 import csv
-import json
 from pathlib import Path
 
 import numpy as np
@@ -10,7 +9,8 @@ from forcing_arrays import model_inputs
 from wave_geometry import dataset_schema, feature_definition
 from project import DEFAULT_CONFIG, load_config, path_for
 from swan_inputs import write_json
-from swan_runtime import CONVERGENCE_FIELDS, SAVED_STATUSES, check_output, fingerprint, inspect_case
+from swan_runtime import CONVERGENCE_FIELDS
+from effective_cases import experiment_settings, quota, select_effective
 
 
 def pad(array, shape):
@@ -24,6 +24,7 @@ def main():
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--profile", help="Use the sole experiment profile by default")
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--allow-partial", action="store_true", help="Explicitly export fewer valid training labels than target")
     args = parser.parse_args()
     config = load_config(args.config)
     if args.profile is None:
@@ -37,21 +38,17 @@ def main():
         raise FileExistsError("Choose a fresh output directory to avoid mixing dataset versions")
     with (root / "manifest.csv").open(encoding="utf-8", newline="") as stream:
         rows = [row for row in csv.DictReader(stream) if row["profile"] == args.profile]
-    norm = config["experiment"]["normalization"]
+    experiment = experiment_settings(config, root)
+    norm = experiment["normalization"]
+    target, require_converged = quota(config, root)
+    # Preflight every selected label before creating shards or a dataset manifest.
+    selected, train_counts, rejected = select_effective(root, rows, target, require_converged,
+                                                       strict=not args.allow_partial)
     converted, shapes, channel_names = [], set(), None
-    for row in rows:
+    for row, (metadata, status, metrics) in selected:
         directory = (root / row["case_directory"]).resolve()
         if not directory.is_relative_to(root) or directory == root:
             raise ValueError("Manifest path escapes case root")
-        status = json.loads((directory / "run_status.json").read_text(encoding="utf-8"))
-        if status.get("status") not in SAVED_STATUSES:
-            continue
-        if status.get("return_code") != 0 or status.get("print_error"):
-            raise ValueError(f"Saved case has a SWAN execution error: {directory}")
-        metadata = inspect_case(directory)
-        metrics = check_output(directory, metadata)
-        if status.get("input_signature") != fingerprint(metadata["input_hashes"]) or status.get("output_sha256") != metrics["output_sha256"]:
-            raise ValueError(f"Completed case changed: {directory}; rerun before conversion")
         with np.load(directory / "inputs.npz", allow_pickle=False) as data:
             wave, wind = data["wave"], data["wind"]
             depth, wet = data["depth_m"], data["wet_mask"].astype(bool)
@@ -74,6 +71,7 @@ def main():
         converted.append({"sample_id": row["sample_id"], "case_id": row["case_id"],
                           "terrain_id": row["terrain_id"], "forcing_id": row["forcing_id"],
                           "split": row["split"], "generalization": row["generalization"],
+                          "family": row["family"], "terrain_shape": metadata.get("terrain_shape", "circle"),
                           "shard": shard.as_posix(), "padded_ny": shape[0], "padded_nx": shape[1],
                           **{name: status.get(name) for name in CONVERGENCE_FIELDS}})
     if not converted:
@@ -84,11 +82,15 @@ def main():
         writer = csv.DictWriter(stream, fieldnames=list(converted[0]))
         writer.writeheader()
         writer.writerows(converted)
-    write_json(output / "metadata.json", {"schema_version": dataset_schema(norm), "version": "2.1", "terrain_feature": feature_definition(norm), "profile": args.profile,
+    write_json(output / "metadata.json", {"schema_version": dataset_schema(norm), "version": "2.1.1", "terrain_feature": feature_definition(norm), "profile": args.profile,
                                            "sample_count": len(converted), "input_channel_count": len(channel_names),
                                            "input_channels": channel_names, "padded_shape": list(next(iter(shapes))),
                                            "normalization": norm, "generalization_column": "generalization",
-                                           "target": "SWAN HSIGN / hs_scale_m", "convergence_policy": "record_only"})
+                                           "target": "SWAN HSIGN / hs_scale_m", "convergence_policy": "required" if require_converged else "record_only",
+                                           "generator": experiment.get("generator", "legacy"),
+                                           "target_effective_train_cases": target, "effective_train_count": train_counts.get(args.profile, 0),
+                                           "training_target_reached": target is None or train_counts.get(args.profile, 0) >= target,
+                                           "partial_export_requested": args.allow_partial, "ineligible_case_count": rejected})
     print(f"Converted {len(converted)} completed cases to {output}")
 
 

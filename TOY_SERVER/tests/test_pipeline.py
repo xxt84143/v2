@@ -23,6 +23,9 @@ class PipelineTests(unittest.TestCase):
     def setUp(self):
         self.config = load_config(ROOT / "config.json")
         self.experiment = self.config["experiment"]
+        self.experiment.pop("generator", None)
+        self.experiment["terrain"]["count"] = {"train": 24, "validation": 4, "test": 4}
+        self.experiment["forcing"]["count"] = {"train": 12, "validation": 4, "test": 4}
         self.tile = self.config["tiles"][0]
         self.islands = generate_islands(self.experiment, Rectangle(self.tile["west"], self.tile["south"]))
         self.forcings = generate_forcings(self.experiment)
