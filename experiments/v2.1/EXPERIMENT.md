@@ -80,4 +80,11 @@ python evaluate.py --data /root/autodl-tmp/toy_data_v21/gebco15s --checkpoint /r
 这次短跑的权重、训练记录和独立 validation 评估归档在
 [CPU 短跑结果](../../results/v2.1_cpu_smoke_20261010/README.md)。
 CPU 短跑用于检查流程，训练轮数和运行设置不等同于原 80 轮 GPU 基线，不能用于判断精度提升。
-80 轮 GPU 对照尚未运行。继续实验时按上面的正式命令使用独立目录，保留原 test。
+上述 CPU 短跑是流程验收阶段记录。80 轮 GPU 正式对照已于 2026-10-10 完成，结果于 2026-10-12 归档。
+
+## 80 轮 GPU 对照结果
+
+完整运行、权重、日志和 121 份验证预测见 [正式结果](../../results/v2.1_gpu_20261010/README.md)，深入分析见 [评估报告](../../results/v2.1_gpu_20261010/EVALUATION_REVIEW.md)。
+按 validation 选择第 46 轮，FP32 验证 RMSE 为 0.399201 m，较原基线下降 17.56%；new_island / new_forcing / new_both 为 0.056642 / 0.477601 / 0.484808 m。
+整体仍落后 0.331709 m 的边界插值基线，F015 占验证 SSE 的 88.42%。
+结果支持继续研究 h/λ 表示，但仅有一个训练 seed，test 未评估，海况覆盖和幅值问题仍需后续对照。

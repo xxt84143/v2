@@ -17,9 +17,10 @@ $$
 - 已对全部 474 个样本完成重编码检查：其余 9 个通道、标签和原始风浪矩阵不变，manifest 字节一致。
 - 根目录、海岛目录和两个上传包共 52 项检查通过，包含色散关系、数据迁移和 CPU 训练／续训／评估检查。
 - 完整数据的两轮 CPU 短跑和 121 个 validation case 的独立评估已完成，见 [短跑结果](results/v2.1_cpu_smoke_20261010/README.md)。
-- 新的 80 轮 GPU 对照训练尚未运行；当前不能判断模型精度是否提升。
+- 80 轮 GPU 对照及 121 个 validation case 的独立 FP32 评估已完成，见 [正式结果](results/v2.1_gpu_20261010/README.md)。最佳轮次 46，整体 RMSE 从 0.484239 m 降至 0.399201 m，新岛屿组降至 0.056642 m。
+- 120/121 个 case 优于旧版；F015 仍贡献 88.42% 的验证平方误差，整体仍弱于边界插值基线。当前是一次单种子对照，test 未评估。
 
-## 接下来如何试验
+## 复现实验
 
 上传本分支的 [TRAIN_SERVER](TRAIN_SERVER/README.md)，使用原数据生成新的相对水深数据目录：
 
@@ -34,6 +35,9 @@ python evaluate.py --data /root/autodl-tmp/toy_data_v21/gebco15s --checkpoint /r
 当前 AutoDL 已验证的解释器为 `/root/miniconda3/bin/python`；使用它时可以将命令中的 `python` 替换为该绝对路径。
 原数据、基线权重和 test 保留；新实验使用新输出目录。
 详细设置、比较指标和迁移限制见 [实验方案](experiments/v2.1/EXPERIMENT.md)。
+
+后续优先增加独立海况、验证不同 seed，并比较显式保留边界背景波高的残差输出。
+本次正式结果归档属于 `v2.1` 分支，不能与 `main` 的基线或 `v2.1.1` 的后续方案混用。
 
 ## 数据与模型约定
 

@@ -1,0 +1,39 @@
+{
+  "dataset": "/root/autodl-tmp/toy_data_v21/gebco15s",
+  "profile": "gebco15s",
+  "samples": 474,
+  "splits": {
+    "train": 227,
+    "validation": 121,
+    "test": 126
+  },
+  "padded_shape": [
+    128,
+    128
+  ],
+  "input_channels": [
+    "relative_depth",
+    "wet_mask",
+    "x",
+    "y",
+    "wave_hs",
+    "wave_tp",
+    "wave_dir_sin",
+    "wave_dir_cos",
+    "wind_u10",
+    "wind_v10"
+  ],
+  "terrain_channel": "relative_depth",
+  "target": "Hs",
+  "wet_pixels": {
+    "train": 3205882,
+    "validation": 1719482,
+    "test": 1777305
+  },
+  "convergence": {
+    "true": 470,
+    "false": 4
+  },
+  "convergence_policy": "record_only",
+  "sha256": "1e083e53358ddcb8725a3a538c467fb9349f71271402456b09fee4e7e1fe3bd8"
+}
