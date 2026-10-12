@@ -164,8 +164,26 @@ python generate_cases.py --split train --training-candidates 24576
 python run_swan.py --split train --workers 4
 ```
 
-追加时使用相同目标；若初次通过 CLI 改过目标，追加命令也应提供同一 `--target-train-cases`，或将目标写回配置文件。
+已有目录会记住上一次的 CLI 配额；追加候选时无需重复目标。显式 CLI 参数优先，配置文件中被修改的配额项也会生效。
+旧版快照没有保存配置基准时，首次续接会优先保留快照目标；需要改变目标可显式使用 `--target-train-cases`。
 成功且输入、输出一致的 case 会复用；失败 case 在后续调用重试。达到有效目标后 runner 不再启动其余训练候选，评测候选不消耗训练配额。
+### 增量扩充
+
+数量表示希望达到的累计总量，而非本次追加量。在同一个 cases 目录、同一 seed、地形/海况库与物理设置下，依次执行：
+
+```bash
+python generate_cases.py --target-train-cases <首次有效训练总量>
+python run_swan.py --workers 4
+python generate_cases.py --target-train-cases <更大的有效训练总量>
+python run_swan.py --workers 4
+```
+
+第二次保留已有案例编号、配对、输入与求解结果，只为缺少的案例写入输入；runner 校验后跳过已有成功结果，只计算尚未完成或失败的案例。
+日志显示 `created` / `reused` 数量；重复相同目标时完整输入全部复用。减小目标不删除已有文件，清单也不会出现重复 sample ID。
+训练候选仍包含配置中的替补比例，因此新增候选数量不一定等于有效训练目标的差值。验证与测试配对保持原样。
+`--limit` 同样选择一个稳定的累计候选前缀，可从较小值增加到较大值，但它是输入诊断上限，不改变有效训练目标。
+不要同时使用 `--overwrite` 或 runner 的 `--rerun`，它们分别显式重写输入和重算结果。
+
 `--case-id`/`--limit` 是诊断子集，runner 不要求其达到完整训练目标，也不产生足额声明；`--check` 只检查输入及可执行文件。
 
 仅准备一个输入检查示例：

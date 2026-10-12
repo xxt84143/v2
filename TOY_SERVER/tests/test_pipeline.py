@@ -1,5 +1,8 @@
 """Offline contracts for synthetic cases, locks and solver output integrity."""
 import json
+import copy
+import io
+from contextlib import redirect_stdout
 import sys
 import tempfile
 import unittest
@@ -13,8 +16,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT.parent))
 from generation import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
-from project import load_config
-from shared.io_utils import write_json
+from project import load_config, resume_sampling
+import generate_cases
+from shared.io_utils import write_json, read_csv, digest_file
 from swan_inputs import grid_coordinates, prepare_case
 from swan_runtime import inspect_case, run_case
 
@@ -35,6 +39,55 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(self.config["boundary"]["jonswap_gamma"], self.experiment["forcing"]["jonswap_gamma"])
         self.assertEqual(self.forcings[0].wave.shape, (3, 2, 2))
         self.assertEqual(self.forcings[0].wind.shape, (2, 3, 3))
+
+    def test_incremental_prefix_preserves_inputs_and_saved_results(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "cases"
+            config = copy.deepcopy(self.config)
+            config["paths"]["cases"] = str(root)
+
+            def generate(target):
+                with patch("generate_cases.load_config", side_effect=lambda _: copy.deepcopy(config)), \
+                     patch.object(sys, "argv", ["generate_cases.py", "--split", "train",
+                                                "--target-train-cases", str(target)]), \
+                     redirect_stdout(io.StringIO()):
+                    generate_cases.main()
+                return json.loads((root / "experiment.json").read_text())
+
+            first = generate(8)
+            self.assertEqual((first["created_in_this_call"], first["reused_in_this_call"]), (10, 0))
+            original_rows = read_csv(root / "manifest.csv")
+            preserved = {}
+            for row in original_rows:
+                directory = root / row["case_directory"]
+                # Sentinel saved results: this checks preservation without launching SWAN.
+                (directory / "run_status.json").write_text('{"status":"completed","sentinel":true}')
+                (directory / "output/compgrid.tab").write_bytes(b"preserve prior solver output")
+                for path in directory.rglob("*"):
+                    if path.is_file():
+                        preserved[path] = digest_file(path)
+            second = generate(16)
+            self.assertEqual((second["created_in_this_call"], second["reused_in_this_call"]), (10, 10))
+            current_rows = read_csv(root / "manifest.csv")
+            self.assertEqual(len(current_rows), 20)
+            self.assertEqual(len({row["sample_id"] for row in current_rows}), 20)
+            self.assertEqual(current_rows[:10], original_rows)
+            for path, digest in preserved.items():
+                self.assertEqual(digest_file(path), digest)
+            repeated = generate(16)
+            self.assertEqual((repeated["created_in_this_call"], repeated["reused_in_this_call"]), (0, 20))
+
+    def test_resume_keeps_cli_target_and_grows_an_old_reserve_prefix(self):
+        configured = copy.deepcopy(self.experiment["case_sampling"])
+        saved = {"configured_case_sampling": configured,
+                 "experiment": {"case_sampling": {**configured,
+                                "target_effective_train_cases": 8, "training_candidate_cases": 10}}}
+        self.assertEqual(resume_sampling(configured, saved)["target_effective_train_cases"], 8)
+        larger = resume_sampling(configured, saved, target_override=16)
+        self.assertEqual(larger["training_candidate_cases"], 20)
+        edited = {**configured, "target_effective_train_cases": 32}
+        self.assertEqual(resume_sampling(edited, saved)["target_effective_train_cases"], 32)
+        self.assertEqual(configured, self.experiment["case_sampling"])
 
     def test_status_write_recovers_from_temporary_windows_lock(self):
         with tempfile.TemporaryDirectory() as temporary:

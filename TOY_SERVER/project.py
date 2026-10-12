@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import re
+from copy import deepcopy
 from pathlib import Path
 
 DEFAULT_CONFIG = Path(__file__).resolve().with_name("config.json")
@@ -61,3 +62,26 @@ def target_settings(config):
     if not isinstance(settings.get("require_converged", False), bool):
         raise ValueError("require_converged must be a boolean")
     return target, candidates, evaluation
+
+
+def resume_sampling(configured, snapshot, target_override=None, candidates_override=None):
+    """Keep saved CLI quotas unless the corresponding configuration was edited."""
+    sampling = deepcopy(configured)
+    previous = snapshot.get("experiment", {}).get("case_sampling", {})
+    baseline = snapshot.get("configured_case_sampling", configured)
+    adjustable = ("target_effective_train_cases", "training_reserve_fraction", "training_candidate_cases")
+    for name in adjustable:
+        if configured.get(name) == baseline.get(name) and name in previous:
+            sampling[name] = previous[name]
+    if target_override is not None:
+        sampling["target_effective_train_cases"] = positive_int(target_override, "--target-train-cases")
+    if candidates_override is not None:
+        sampling["training_candidate_cases"] = positive_int(candidates_override, "--training-candidates")
+    elif "training_candidate_cases" in sampling:
+        target = sampling.get("target_effective_train_cases", DEFAULT_TRAIN_TARGET)
+        reserve = float(sampling.get("training_reserve_fraction", .25))
+        # A larger effective target must not be blocked by an old explicit reserve prefix.
+        if (target > previous.get("target_effective_train_cases", target)
+                and configured.get("training_candidate_cases") == baseline.get("training_candidate_cases")):
+            sampling["training_candidate_cases"] = max(sampling["training_candidate_cases"], math.ceil(target*(1+reserve)))
+    return sampling

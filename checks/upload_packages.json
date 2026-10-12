@@ -2,16 +2,16 @@
   {
     "file": "TOY_SERVER_v2.1.1.zip",
     "files": 19,
-    "bytes": 52555,
-    "sha256": "fcd5afd521dcd5310d16247a1e53468d12f30caadf176eefda8c89621737988c",
+    "bytes": 54831,
+    "sha256": "4d0ce5ba708f8086866cfef8c8325a79d0a57febef39e87bc3ec89531ccbb613",
     "shared_included": true,
     "checksum_manifest_verified": true
   },
   {
     "file": "TRAIN_SERVER_v2.1.1.zip",
     "files": 18,
-    "bytes": 38431,
-    "sha256": "c84e3e65192ce3fdfb34e0001d360b028b682e3b1aa50dce2913204dfb611467",
+    "bytes": 38951,
+    "sha256": "11531c2e85c00af648fdc4f11506fad5c34ecd026e86a9da3a4ed64ed515fe90",
     "shared_included": true,
     "checksum_manifest_verified": true
   }

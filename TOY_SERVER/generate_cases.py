@@ -2,14 +2,16 @@
 from __future__ import annotations
 
 import argparse
+import json
+from copy import deepcopy
 from pathlib import Path
 
 from generation import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
-from project import DEFAULT_CONFIG, load_config, path_for
-from swan_inputs import grid_coordinates, prepare_case, write_manifest
+from project import DEFAULT_CONFIG, load_config, path_for, resume_sampling
+from swan_inputs import grid_coordinates, prepare_case, reuse_case, write_manifest
 from shared.io_utils import write_json
 from generation import coverage_summary, validate_config
-from project import positive_int, target_settings
+from project import target_settings
 
 
 def main():
@@ -25,14 +27,12 @@ def main():
     args = parser.parse_args()
     config = load_config(args.config)
     experiment = config["experiment"]
-    if args.target_train_cases is not None or args.training_candidates is not None:
-        if experiment.get("generator") != "broad-coverage-1":
-            raise ValueError("Quota overrides require broad-coverage-1")
-        sampling = experiment["case_sampling"]
-        if args.target_train_cases is not None:
-            sampling["target_effective_train_cases"] = positive_int(args.target_train_cases, "--target-train-cases")
-        if args.training_candidates is not None:
-            sampling["training_candidate_cases"] = positive_int(args.training_candidates, "--training-candidates")
+    root = path_for(config, "cases")
+    snapshot = root / "experiment.json"
+    saved = json.loads(snapshot.read_text(encoding="utf-8")) if snapshot.is_file() else {}
+    configured_sampling = deepcopy(experiment["case_sampling"])
+    experiment["case_sampling"] = resume_sampling(configured_sampling, saved,
+                                                  args.target_train_cases, args.training_candidates)
     broad = experiment.get("generator") == "broad-coverage-1"
     if broad:
         # Use the actual solver frequency limits in coverage validation.
@@ -48,11 +48,8 @@ def main():
     if config["boundary"]["jonswap_gamma"] != experiment["forcing"]["jonswap_gamma"] or config["boundary"]["directional_spread_degrees"] != experiment["forcing"]["directional_spread_deg"]:
         raise ValueError("Boundary spectrum settings must agree with experiment.forcing")
     forcings = {item.forcing_id: item for item in generate_forcings(experiment)}
-    root = path_for(config, "cases")
-    snapshot = root / "experiment.json"
     if snapshot.is_file():
-        import json
-        previous = json.loads(snapshot.read_text(encoding="utf-8"))["experiment"]
+        previous = saved["experiment"]
         old_recipe, new_recipe = dict(previous), dict(experiment)
         # Candidate count can increase with a stable recipe/pair prefix.
         for recipe in (old_recipe, new_recipe):
@@ -68,6 +65,7 @@ def main():
             raise ValueError("Generator recipe changed; choose a fresh paths.cases directory")
     summaries = []
     records = []
+    created, reused = 0, 0
     for tile in config["tiles"]:
         rectangle = Rectangle(west=tile["west"], south=tile["south"])
         islands = {item.terrain_id: item for item in generate_islands(experiment, rectangle)}
@@ -83,6 +81,19 @@ def main():
             terrain_cache = {}
             for case in selected:
                 terrain_id = case["terrain_id"]
+                forcing = forcings[case["forcing_id"]]
+                sample_id = f"{profile}__{tile['id']}__{case['case_id']}"
+                directory = root / profile / tile["id"] / case["case_id"]
+                record = {"sample_id": sample_id, "case_id": case["case_id"], "profile": profile,
+                          "tile_id": tile["id"], "terrain_id": terrain_id, "forcing_id": case["forcing_id"],
+                          "split": case["split"], "generalization": case["generalization"],
+                          "family": case["family"], "case_directory": directory.relative_to(root).as_posix()}
+                reused_case = not args.overwrite and reuse_case(directory, sample_id, case, profile, tile,
+                                                                lon, lat, forcing.wave, forcing.wind, config)
+                if reused_case:
+                    reused += 1
+                    records.append(record)
+                    continue
                 if terrain_id not in terrain_cache:
                     depth, wet, _ = make_island_depth(lon, lat, islands[terrain_id],
                                                      experiment["terrain"]["base_depth_m"], config["grid"]["exception"])
@@ -92,15 +103,10 @@ def main():
                         raise ValueError("This resolution does not resolve the island; use a finer grid")
                     terrain_cache[terrain_id] = depth, wet
                 depth, wet = terrain_cache[terrain_id]
-                forcing = forcings[case["forcing_id"]]
-                sample_id = f"{profile}__{tile['id']}__{case['case_id']}"
-                directory = root / profile / tile["id"] / case["case_id"]
                 prepare_case(directory, sample_id, case, profile, tile, lon, lat, depth, wet,
                              forcing.wave, forcing.wind, config, args.overwrite)
-                records.append({"sample_id": sample_id, "case_id": case["case_id"], "profile": profile,
-                                "tile_id": tile["id"], "terrain_id": terrain_id, "forcing_id": case["forcing_id"],
-                                "split": case["split"], "generalization": case["generalization"],
-                                "family": case["family"], "case_directory": directory.relative_to(root).as_posix()})
+                created += 1
+                records.append(record)
                 print(f"Prepared {sample_id}: {depth.shape}", flush=True)
     if args.plan_only:
         destination = Path(config["_base"]) / "coverage_plan.json"
@@ -114,10 +120,12 @@ def main():
     write_manifest(root / "manifest.csv", records)
     write_json(root / "experiment.json", {"schema_version": "island-matrix-experiment-2",
                                           "version": "2.1.1", "experiment": experiment,
+                                          "configured_case_sampling": configured_sampling,
                                           "coverage": summaries, "selected_in_this_call": len(records),
+                                          "created_in_this_call": created, "reused_in_this_call": reused,
                                           "wave_shape": [3, 2, 2], "wind_shape": [2, 3, 3],
                                           "matrix_order": "channel, south-to-north, west-to-east"})
-    print(f"Prepared {len(records)} cases; manifest: {root / 'manifest.csv'}")
+    print(f"Selected {len(records)} cases: {created} created, {reused} reused; manifest: {root / 'manifest.csv'}")
 
 
 if __name__ == "__main__":

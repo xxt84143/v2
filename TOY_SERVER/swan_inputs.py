@@ -4,13 +4,20 @@ import _bootstrap  # locate shared contracts
 import csv
 import hashlib
 import io
+import json
 import math
+import os
 from pathlib import Path
 
 import numpy as np
 
 from shared.wave_features import validate
 from shared.io_utils import write_json
+from shared.io_utils import digest_file
+
+TERRAIN_FIELDS = ("generator", "candidate_rank", "terrain_shape", "center_lon", "center_lat",
+                  "radius_m", "skirt_width_m", "shore_depth_m", "semi_major_m", "semi_minor_m",
+                  "orientation_deg")
 
 
 def array_text(array):
@@ -65,8 +72,49 @@ def render_input(case_id, lon, lat, wave, wind, config):
 
 
 
+def reuse_case(directory, sample_id, case, profile, tile, lon, lat, wave, wind, config,
+               depth=None, wet=None):
+    """Validate an existing identity/input without writing or resetting its results."""
+    if not directory.exists():
+        return False
+    message = f"Case changed or incomplete: {directory}; choose a new root or explicitly use --overwrite"
+    try:
+        metadata = json.loads((directory / "case.json").read_text(encoding="utf-8"))
+        expected = {"schema_version": "toy-server-case-2", "sample_id": sample_id,
+                    "case_id": case["case_id"], "profile": profile, "tile": tile,
+                    "shape": [len(lat), len(lon)], "terrain_id": case["terrain_id"],
+                    "forcing_id": case["forcing_id"], "split": case["split"],
+                    "generalization": case["generalization"], "family": case["family"],
+                    "physics_commands": config["physics_commands"],
+                    "spectral_grid": config["spectral_grid"], "output_quantities": config["output_quantities"]}
+        if case.get("generator") == "broad-coverage-1":
+            expected.update({name: case[name] for name in TERRAIN_FIELDS})
+        if any(metadata.get(name) != value for name, value in expected.items()):
+            raise ValueError("Case identity or solver configuration differs")
+        for name in ("INPUT", "bottom.dat", "wind.dat", "swaninit", "inputs.npz"):
+            if digest_file(directory / name) != metadata["input_hashes"][name]:
+                raise ValueError("Prepared input hash changed")
+        if (directory / "INPUT").read_bytes() != render_input(case["case_id"], lon, lat, wave, wind, config).encode("ascii"):
+            raise ValueError("Rendered solver input differs")
+        with np.load(directory / "inputs.npz", allow_pickle=False) as arrays:
+            for name, value in (("longitude", lon), ("latitude", lat),
+                                ("wave", wave.astype(np.float32)), ("wind", wind.astype(np.float32))):
+                if not np.array_equal(arrays[name], value):
+                    raise ValueError(f"Saved {name} differs")
+            if depth is not None and not np.array_equal(arrays["depth_m"], depth):
+                raise ValueError("Saved depth differs")
+            if wet is not None and not np.array_equal(arrays["wet_mask"].astype(bool), wet):
+                raise ValueError("Saved wet mask differs")
+        return True
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise FileExistsError(message) from exc
+
+
 def prepare_case(directory, sample_id, case, profile, tile, lon, lat, depth, wet, wave, wind, config, overwrite=False):
     validate(wave, wind)
+    if not overwrite and reuse_case(directory, sample_id, case, profile, tile, lon, lat, wave, wind,
+                                    config, depth, wet):
+        return
     stream = io.BytesIO()
     np.savez_compressed(stream, depth_m=depth, wet_mask=wet.astype(np.uint8), longitude=lon, latitude=lat,
                         wave=wave.astype(np.float32), wind=wind.astype(np.float32))
@@ -87,19 +135,9 @@ def prepare_case(directory, sample_id, case, profile, tile, lon, lat, depth, wet
                 "physics_commands": config["physics_commands"], "spectral_grid": config["spectral_grid"],
                 "output_quantities": config["output_quantities"], "input_hashes": hashes}
     if case.get("generator") == "broad-coverage-1":
-        metadata.update({name: case[name] for name in
-                         ("generator", "candidate_rank", "terrain_shape", "center_lon", "center_lat",
-                          "radius_m", "skirt_width_m", "shore_depth_m", "semi_major_m", "semi_minor_m",
-                          "orientation_deg")})
+        metadata.update({name: case[name] for name in TERRAIN_FIELDS})
         metadata["version"] = "2.1.1"
     previous_path = directory / "case.json"
-    if directory.exists() and not overwrite:
-        previous = json.loads(previous_path.read_text(encoding="utf-8")) if previous_path.is_file() else {}
-        if previous != metadata or not all((directory/name).is_file() and
-                                          hashlib.sha256((directory/name).read_bytes()).hexdigest() == digest
-                                          for name, digest in hashes.items()):
-            raise FileExistsError(f"Case changed or incomplete: {directory}; use --overwrite")
-        return
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "output").mkdir(exist_ok=True)
     for name, data in files.items():

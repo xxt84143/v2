@@ -1,9 +1,11 @@
 """Check syntax, contracts and dependency direction without importing the project."""
 from __future__ import annotations
 import ast
+import builtins
 import hashlib
 import json
 import math
+import symtable
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -27,6 +29,20 @@ def main():
         compile(trees[rel], rel, "exec")
         sources[rel] = source
     check("python_ast_and_compile", bool(sources))
+    for rel, source in sources.items():
+        table = symtable.symtable(source, rel, "exec")
+        declared = {s.get_name() for s in table.get_symbols()
+                    if s.is_assigned() or s.is_imported() or s.is_namespace()}
+        allowed = declared | set(dir(builtins)) | {"__file__", "__name__", "__package__", "__doc__"}
+        missing = set()
+        def referenced_globals(scope):
+            for symbol in scope.get_symbols():
+                if symbol.is_global() and symbol.is_referenced() and symbol.get_name() not in allowed:
+                    missing.add(symbol.get_name())
+            for child in scope.get_children():
+                referenced_globals(child)
+        referenced_globals(table)
+        check(f"defined_global_names:{rel}:{sorted(missing)}", not missing)
     configs = {p.relative_to(ROOT).as_posix(): json.loads(p.read_text(encoding="utf-8-sig"))
                for p in ROOT.rglob("*.json") if "checks" not in p.parts}
     check("json_parse", bool(configs))
@@ -119,6 +135,13 @@ def main():
           not any(d.startswith("TOY_SERVER/") for d in deps) for r, deps in edges.items() if r.startswith("TRAIN_SERVER/")))
     check("runtime_does_not_import_renderer", "TOY_SERVER/swan_inputs.py" not in edges["TOY_SERVER/swan_runtime.py"])
     check("quota_does_not_import_generation", "TOY_SERVER/generation.py" not in edges["TOY_SERVER/effective_cases.py"])
+    generator_tree = trees["TOY_SERVER/generate_cases.py"]
+    calls = {n.func.id for n in ast.walk(generator_tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)}
+    check("incremental_case_reuse_connected", {"reuse_case", "resume_sampling", "write_manifest"}.issubset(calls))
+    reuse = next(n for n in trees["TOY_SERVER/swan_inputs.py"].body
+                 if isinstance(n, ast.FunctionDef) and n.name == "reuse_case")
+    check("case_reuse_does_not_write_results", not any(isinstance(n, ast.Attribute)
+          and n.attr in {"write_bytes", "write_text", "mkdir", "unlink"} for n in ast.walk(reuse)))
     if BASE.is_dir():
         def functions(path):
             return {n.name: n for n in ast.parse(path.read_text(encoding="utf-8")).body if isinstance(n, ast.FunctionDef)}

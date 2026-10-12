@@ -1,10 +1,118 @@
 {
   "version": "2.1.1",
   "mode": "static_only",
-  "passed": 111,
+  "passed": 141,
   "checks": [
     {
       "name": "python_ast_and_compile",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:scripts/package_servers.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:scripts/static_check.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:shared/io_utils.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:shared/wave_features.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:shared/__init__.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/effective_cases.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/generate_cases.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/generation.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/inspect_cases.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/prepare_dataset.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/project.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/run_swan.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/swan_inputs.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/swan_runtime.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/_bootstrap.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/check_dataset.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/check_environment.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/evaluate.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/migrate_dataset.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/model_factory.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/train.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/training_core.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/_bootstrap.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TOY_SERVER/tests/test_pipeline.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/tests/test_metrics.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/tests/test_relative_depth.py:[]",
+      "passed": true
+    },
+    {
+      "name": "defined_global_names:TRAIN_SERVER/tests/test_training_package.py:[]",
       "passed": true
     },
     {
@@ -164,6 +272,10 @@
       "passed": true
     },
     {
+      "name": "imports:TOY_SERVER/swan_inputs.py:shared.io_utils",
+      "passed": true
+    },
+    {
       "name": "imports:TOY_SERVER/swan_runtime.py:shared.io_utils",
       "passed": true
     },
@@ -313,6 +425,14 @@
     },
     {
       "name": "quota_does_not_import_generation",
+      "passed": true
+    },
+    {
+      "name": "incremental_case_reuse_connected",
+      "passed": true
+    },
+    {
+      "name": "case_reuse_does_not_write_results",
       "passed": true
     },
     {
@@ -539,18 +659,18 @@
   },
   "source_hashes_lf": {
     "scripts/package_servers.py": "ee3a2aaad89e205c3fc63f9e290b1d05d9d46d58cb308fabe151cbafb64d741b",
-    "scripts/static_check.py": "488a5feffe59f318b04cf7041746be37d2e1876507eb22fbecf1e157301634b8",
+    "scripts/static_check.py": "86e0ed7aaa3cca1e16880789e5e6176dc8e6d6c01d3295e89a88a82ed25f10a2",
     "shared/io_utils.py": "dbd0e535f41698e1ef093cf08fb4e83acd0bb74d24c2b489ac65c281b12d417f",
     "shared/wave_features.py": "e45926217c662bdc5585023bb05a157970fc1446235b248d682f7fcd6ccd6c9a",
     "shared/__init__.py": "1e5bd7ca9cf9c252cbc8d86d3b8392929535fd79ef4a768ac27f8cee46a25fa5",
     "TOY_SERVER/effective_cases.py": "ccf81c80cbd16c0b13ce151fa36ad61ed8178f80d336ce241909a88128f09693",
-    "TOY_SERVER/generate_cases.py": "d2a2dab50ba435b51685d854d76b63bfc46ee4b2aee96781e4abe3f72af9f1ac",
+    "TOY_SERVER/generate_cases.py": "f072d75c813d4407cb9c6a4a5119b0d4a6a80dce52bbf2057d97de38a19a5dfc",
     "TOY_SERVER/generation.py": "f634f5a8b6e6483b8696e08cb2ce8af0f992d3da6e2519e0ae47f857d4cc9339",
     "TOY_SERVER/inspect_cases.py": "183de1d3fc2292d68479891b5cd0319a1d5a0130657f2e9e14d3a1cd0fb343ba",
     "TOY_SERVER/prepare_dataset.py": "20cfd2cf2a079d6c55f35604b3f840c60c23b46eea5be31e5da0edcaf1c2213f",
-    "TOY_SERVER/project.py": "bcf5b9222103db5006037cb2e219102e02c19220e6a46addbef5b2b72881a478",
+    "TOY_SERVER/project.py": "f8965e62569563b15922813f8bfeeb5dff4c5a7c6320b06a47da8cb8c2ba0f32",
     "TOY_SERVER/run_swan.py": "744724d323967cfdd2777a784c7abda2ee21b3886d74bcd3fc8b2b1ac374fb34",
-    "TOY_SERVER/swan_inputs.py": "83af2ec9a62045a7346d6aebd488813b6d32fc086bbc8130c5987b522bbc035c",
+    "TOY_SERVER/swan_inputs.py": "a54f4dfa1e4626a33c7a41871a8190977d1dbb2fbda3b2f2720dd3b856ce8d7e",
     "TOY_SERVER/swan_runtime.py": "d93405266d5a3491c12dde3a96c22ce4f0051bda77e8d3baaa631339db248c93",
     "TOY_SERVER/_bootstrap.py": "474b7c0cf56dc0324e1d944449b2d82cd7954230419c7a4221031b83aba91994",
     "TRAIN_SERVER/check_dataset.py": "eabb1a03e88e7f56e268c79fa3bfa3c9d7dcf2082469587301d56cbede07401f",
@@ -561,7 +681,7 @@
     "TRAIN_SERVER/train.py": "03b3415ab304560af3b49fec78701c9112c4fa45eb4c1bebc8e0b61c006d3490",
     "TRAIN_SERVER/training_core.py": "77da52cfe6f0388c28e3f24cdadabcc2068f5f3babd64c1436a5bf748f98b613",
     "TRAIN_SERVER/_bootstrap.py": "474b7c0cf56dc0324e1d944449b2d82cd7954230419c7a4221031b83aba91994",
-    "TOY_SERVER/tests/test_pipeline.py": "a45c2289bbd3fd54fde4a5576bfb1b5e57a058d34f8fc38772b27f61ce2bc711",
+    "TOY_SERVER/tests/test_pipeline.py": "09d8088c5e84ebeb9ff6234a4bed950f778f39a99d7c2868812f915ae8efba79",
     "TRAIN_SERVER/tests/test_metrics.py": "d43a82cc15f988225a30b9b8e2d831f1e671b6eeb9b305ddce7486bf4c96e936",
     "TRAIN_SERVER/tests/test_relative_depth.py": "ef2f224bdc2cc2eb0ff5904622e08dc370017f471de0123ef8fa1191ab48257c",
     "TRAIN_SERVER/tests/test_training_package.py": "e8dc62005d3f5d672cc9d0bd5ea8a76f6d626e516225ff53a91cd0e3e8febda2"
