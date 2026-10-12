@@ -1,37 +1,8 @@
 {
   "schema_version": "toy-server-1",
   "paths": {
-    "wind": "data/wind.nc",
-    "waves": "data/waves.nc",
     "cases": "cases_island",
     "swan_executable": "swan"
-  },
-  "sampling": {
-    "start_utc": "2023-07-01T00:00:00",
-    "end_utc": "2023-07-01T21:00:00",
-    "step_hours": 3
-  },
-  "era5": {
-    "dataset": "reanalysis-era5-single-levels",
-    "area_north_west_south_east": [
-      24.5,
-      121.0,
-      23.0,
-      122.5
-    ],
-    "download": {
-      "workers": 5,
-      "variables_per_request": 1,
-      "max_days_per_request": 31,
-      "max_fields_per_request": 10000,
-      "max_estimated_mib": 256,
-      "http_timeout_seconds": 120,
-      "http_retries": 10,
-      "poll_seconds": 30,
-      "download_attempts": 3,
-      "retry_seconds": 30,
-      "merge_time_chunk": 24
-    }
   },
   "tiles": [
     {
@@ -122,41 +93,6 @@
         "validation": 64,
         "test": 64
       },
-      "windsea_speed_mps": [
-        8.0,
-        14.0
-      ],
-      "windsea_wave_age": [
-        0.8,
-        1.15
-      ],
-      "windsea_steepness": [
-        0.018,
-        0.03
-      ],
-      "wind_only_speed_mps": [
-        6.0,
-        14.0
-      ],
-      "swell_height_m": [
-        0.5,
-        2.5
-      ],
-      "swell_period_s": [
-        9.0,
-        14.0
-      ],
-      "swell_wind_speed_mps": [
-        1.0,
-        5.0
-      ],
-      "swell_wind_offsets_deg": [
-        0.0,
-        -45.0,
-        45.0,
-        90.0,
-        180.0
-      ],
       "maximum_relative_gradient": 0.15,
       "maximum_direction_gradient_deg": 8.0,
       "maximum_steepness": 0.04,

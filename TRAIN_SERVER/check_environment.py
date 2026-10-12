@@ -6,7 +6,8 @@ import platform
 import sys
 
 from model_factory import build_model
-from training_core import HERE, load_config, write_json
+from training_core import HERE, load_config
+from shared.io_utils import write_json
 
 
 def main():

@@ -8,10 +8,11 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from forcing_arrays import model_inputs, terrain_feature
+sys.path.insert(0, str(ROOT.parent))
+from shared.wave_features import model_inputs, terrain_feature
 from migrate_dataset import convert_dataset
 from training_core import validate_dataset, RELATIVE_DEPTH_CHANNELS
-from wave_geometry import relative_depth, recover_log_depth, RELATIVE_DEPTH_SCHEMA
+from shared.wave_features import relative_depth, recover_log_depth, RELATIVE_DEPTH_SCHEMA
 from test_training_package import fixture
 
 

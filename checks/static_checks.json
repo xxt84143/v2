@@ -1,0 +1,569 @@
+{
+  "version": "2.1.1",
+  "mode": "static_only",
+  "passed": 111,
+  "checks": [
+    {
+      "name": "python_ast_and_compile",
+      "passed": true
+    },
+    {
+      "name": "json_parse",
+      "passed": true
+    },
+    {
+      "name": "one_readme",
+      "passed": true
+    },
+    {
+      "name": "legacy_and_download_files_removed",
+      "passed": true
+    },
+    {
+      "name": "obsolete_imports_removed",
+      "passed": true
+    },
+    {
+      "name": "toy_dependencies_minimal",
+      "passed": true
+    },
+    {
+      "name": "download_config_removed",
+      "passed": true
+    },
+    {
+      "name": "default_target_preserved",
+      "passed": true
+    },
+    {
+      "name": "training_capacity",
+      "passed": true
+    },
+    {
+      "name": "validation_capacity",
+      "passed": true
+    },
+    {
+      "name": "test_capacity",
+      "passed": true
+    },
+    {
+      "name": "fixed_spectrum",
+      "passed": true
+    },
+    {
+      "name": "feature_schema_preserved",
+      "passed": true
+    },
+    {
+      "name": "bootstrap_copies_equal",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/effective_cases.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/effective_cases.py:swan_runtime",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:generation",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:swan_inputs",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:generation",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generate_cases.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/generation.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/inspect_cases.py:generation",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/inspect_cases.py:effective_cases",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/inspect_cases.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/inspect_cases.py:swan_inputs",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/inspect_cases.py:swan_runtime",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:swan_runtime",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/prepare_dataset.py:effective_cases",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/run_swan.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/run_swan.py:swan_runtime",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/run_swan.py:effective_cases",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/run_swan.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/swan_inputs.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/swan_inputs.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/swan_runtime.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/swan_runtime.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/check_dataset.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/check_dataset.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/check_environment.py:model_factory",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/check_environment.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/check_environment.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/evaluate.py:model_factory",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/evaluate.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/migrate_dataset.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/migrate_dataset.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/migrate_dataset.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/migrate_dataset.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/train.py:model_factory",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/train.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/train.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/training_core.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/training_core.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/training_core.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/tests/test_pipeline.py:generation",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/tests/test_pipeline.py:project",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/tests/test_pipeline.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/tests/test_pipeline.py:swan_inputs",
+      "passed": true
+    },
+    {
+      "name": "imports:TOY_SERVER/tests/test_pipeline.py:swan_runtime",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_metrics.py:evaluate",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_relative_depth.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_relative_depth.py:migrate_dataset",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_relative_depth.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_relative_depth.py:shared.wave_features",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_relative_depth.py:test_training_package",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_training_package.py:training_core",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_training_package.py:shared.io_utils",
+      "passed": true
+    },
+    {
+      "name": "imports:TRAIN_SERVER/tests/test_training_package.py:train",
+      "passed": true
+    },
+    {
+      "name": "production_dependency_graph_acyclic",
+      "passed": true
+    },
+    {
+      "name": "shared_has_no_server_dependency",
+      "passed": true
+    },
+    {
+      "name": "servers_do_not_import_each_other",
+      "passed": true
+    },
+    {
+      "name": "runtime_does_not_import_renderer",
+      "passed": true
+    },
+    {
+      "name": "quota_does_not_import_generation",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:validate",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:load",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:resize",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:terrain_feature",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:model_inputs",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:relative_depth",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:feature_definition",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:dataset_schema",
+      "passed": true
+    },
+    {
+      "name": "feature_algorithm_unchanged:recover_log_depth",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:bounds",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:rng_for",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:strata",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:between",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:validate_config",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:generate_terrains",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:generate_conditions",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:pair_indices",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:sparse_plan",
+      "passed": true
+    },
+    {
+      "name": "generation_algorithm_unchanged:coverage_summary",
+      "passed": true
+    },
+    {
+      "name": "geometry_unchanged:make_island_depth",
+      "passed": true
+    },
+    {
+      "name": "geometry_unchanged:local_xy_m",
+      "passed": true
+    },
+    {
+      "name": "geometry_unchanged:domain_size_m",
+      "passed": true
+    },
+    {
+      "name": "geometry_unchanged:island_to_row",
+      "passed": true
+    },
+    {
+      "name": "geometry_unchanged:forcing_to_row",
+      "passed": true
+    },
+    {
+      "name": "entry_present:generate_cases",
+      "passed": true
+    },
+    {
+      "name": "entry_present:run_swan",
+      "passed": true
+    },
+    {
+      "name": "entry_present:prepare_dataset",
+      "passed": true
+    },
+    {
+      "name": "entry_present:inspect_cases",
+      "passed": true
+    },
+    {
+      "name": "entry_present:train",
+      "passed": true
+    },
+    {
+      "name": "entry_present:evaluate",
+      "passed": true
+    },
+    {
+      "name": "entry_present:check_dataset",
+      "passed": true
+    },
+    {
+      "name": "entry_present:check_environment",
+      "passed": true
+    },
+    {
+      "name": "entry_present:migrate_dataset",
+      "passed": true
+    }
+  ],
+  "python_sources": 27,
+  "configuration_json_files": 2,
+  "baseline_available": true,
+  "runtime_tests_executed": false,
+  "case_generation_executed": false,
+  "swan_executed": false,
+  "training_executed": false,
+  "dependency_graph": {
+    "TOY_SERVER/_bootstrap.py": [],
+    "TOY_SERVER/effective_cases.py": [
+      "TOY_SERVER/project.py",
+      "TOY_SERVER/swan_runtime.py"
+    ],
+    "TOY_SERVER/generate_cases.py": [
+      "TOY_SERVER/generation.py",
+      "TOY_SERVER/project.py",
+      "TOY_SERVER/swan_inputs.py",
+      "shared/io_utils.py"
+    ],
+    "TOY_SERVER/generation.py": [
+      "TOY_SERVER/project.py"
+    ],
+    "TOY_SERVER/inspect_cases.py": [
+      "TOY_SERVER/effective_cases.py",
+      "TOY_SERVER/generation.py",
+      "TOY_SERVER/project.py",
+      "TOY_SERVER/swan_inputs.py",
+      "TOY_SERVER/swan_runtime.py"
+    ],
+    "TOY_SERVER/prepare_dataset.py": [
+      "TOY_SERVER/_bootstrap.py",
+      "TOY_SERVER/effective_cases.py",
+      "TOY_SERVER/project.py",
+      "TOY_SERVER/swan_runtime.py",
+      "shared/io_utils.py",
+      "shared/wave_features.py"
+    ],
+    "TOY_SERVER/project.py": [],
+    "TOY_SERVER/run_swan.py": [
+      "TOY_SERVER/effective_cases.py",
+      "TOY_SERVER/project.py",
+      "TOY_SERVER/swan_runtime.py",
+      "shared/io_utils.py"
+    ],
+    "TOY_SERVER/swan_inputs.py": [
+      "TOY_SERVER/_bootstrap.py",
+      "shared/io_utils.py",
+      "shared/wave_features.py"
+    ],
+    "TOY_SERVER/swan_runtime.py": [
+      "TOY_SERVER/_bootstrap.py",
+      "shared/io_utils.py",
+      "shared/wave_features.py"
+    ],
+    "TRAIN_SERVER/_bootstrap.py": [],
+    "TRAIN_SERVER/check_dataset.py": [
+      "TRAIN_SERVER/training_core.py",
+      "shared/io_utils.py"
+    ],
+    "TRAIN_SERVER/check_environment.py": [
+      "TRAIN_SERVER/model_factory.py",
+      "TRAIN_SERVER/training_core.py",
+      "shared/io_utils.py"
+    ],
+    "TRAIN_SERVER/evaluate.py": [
+      "TRAIN_SERVER/model_factory.py",
+      "TRAIN_SERVER/training_core.py"
+    ],
+    "TRAIN_SERVER/migrate_dataset.py": [
+      "TRAIN_SERVER/_bootstrap.py",
+      "TRAIN_SERVER/training_core.py",
+      "shared/io_utils.py",
+      "shared/wave_features.py"
+    ],
+    "TRAIN_SERVER/model_factory.py": [],
+    "TRAIN_SERVER/train.py": [
+      "TRAIN_SERVER/model_factory.py",
+      "TRAIN_SERVER/training_core.py",
+      "shared/io_utils.py"
+    ],
+    "TRAIN_SERVER/training_core.py": [
+      "TRAIN_SERVER/_bootstrap.py",
+      "shared/io_utils.py",
+      "shared/wave_features.py"
+    ],
+    "shared/__init__.py": [],
+    "shared/io_utils.py": [],
+    "shared/wave_features.py": []
+  },
+  "source_hashes_lf": {
+    "scripts/package_servers.py": "ee3a2aaad89e205c3fc63f9e290b1d05d9d46d58cb308fabe151cbafb64d741b",
+    "scripts/static_check.py": "488a5feffe59f318b04cf7041746be37d2e1876507eb22fbecf1e157301634b8",
+    "shared/io_utils.py": "dbd0e535f41698e1ef093cf08fb4e83acd0bb74d24c2b489ac65c281b12d417f",
+    "shared/wave_features.py": "e45926217c662bdc5585023bb05a157970fc1446235b248d682f7fcd6ccd6c9a",
+    "shared/__init__.py": "1e5bd7ca9cf9c252cbc8d86d3b8392929535fd79ef4a768ac27f8cee46a25fa5",
+    "TOY_SERVER/effective_cases.py": "ccf81c80cbd16c0b13ce151fa36ad61ed8178f80d336ce241909a88128f09693",
+    "TOY_SERVER/generate_cases.py": "d2a2dab50ba435b51685d854d76b63bfc46ee4b2aee96781e4abe3f72af9f1ac",
+    "TOY_SERVER/generation.py": "f634f5a8b6e6483b8696e08cb2ce8af0f992d3da6e2519e0ae47f857d4cc9339",
+    "TOY_SERVER/inspect_cases.py": "183de1d3fc2292d68479891b5cd0319a1d5a0130657f2e9e14d3a1cd0fb343ba",
+    "TOY_SERVER/prepare_dataset.py": "20cfd2cf2a079d6c55f35604b3f840c60c23b46eea5be31e5da0edcaf1c2213f",
+    "TOY_SERVER/project.py": "bcf5b9222103db5006037cb2e219102e02c19220e6a46addbef5b2b72881a478",
+    "TOY_SERVER/run_swan.py": "744724d323967cfdd2777a784c7abda2ee21b3886d74bcd3fc8b2b1ac374fb34",
+    "TOY_SERVER/swan_inputs.py": "83af2ec9a62045a7346d6aebd488813b6d32fc086bbc8130c5987b522bbc035c",
+    "TOY_SERVER/swan_runtime.py": "d93405266d5a3491c12dde3a96c22ce4f0051bda77e8d3baaa631339db248c93",
+    "TOY_SERVER/_bootstrap.py": "474b7c0cf56dc0324e1d944449b2d82cd7954230419c7a4221031b83aba91994",
+    "TRAIN_SERVER/check_dataset.py": "eabb1a03e88e7f56e268c79fa3bfa3c9d7dcf2082469587301d56cbede07401f",
+    "TRAIN_SERVER/check_environment.py": "7e68e1ce51f2780c718eee8eafe50d85d3458ece388626adde944f21ce715c85",
+    "TRAIN_SERVER/evaluate.py": "1babf5d6f319036e7c7c321e8d0a2b4920cb222efb2619b0fb5dc3cd511be312",
+    "TRAIN_SERVER/migrate_dataset.py": "86771110bfa820112694b9e55c46345bec7e0d28825a2c1598b4a09794c77942",
+    "TRAIN_SERVER/model_factory.py": "ca2a9839d61ff9b547c28f7bbf10a8ae9bd1bde1748aacf7cb91f6ba46c50419",
+    "TRAIN_SERVER/train.py": "03b3415ab304560af3b49fec78701c9112c4fa45eb4c1bebc8e0b61c006d3490",
+    "TRAIN_SERVER/training_core.py": "77da52cfe6f0388c28e3f24cdadabcc2068f5f3babd64c1436a5bf748f98b613",
+    "TRAIN_SERVER/_bootstrap.py": "474b7c0cf56dc0324e1d944449b2d82cd7954230419c7a4221031b83aba91994",
+    "TOY_SERVER/tests/test_pipeline.py": "a45c2289bbd3fd54fde4a5576bfb1b5e57a058d34f8fc38772b27f61ce2bc711",
+    "TRAIN_SERVER/tests/test_metrics.py": "d43a82cc15f988225a30b9b8e2d831f1e671b6eeb9b305ddce7486bf4c96e936",
+    "TRAIN_SERVER/tests/test_relative_depth.py": "ef2f224bdc2cc2eb0ff5904622e08dc370017f471de0123ef8fa1191ab48257c",
+    "TRAIN_SERVER/tests/test_training_package.py": "e8dc62005d3f5d672cc9d0bd5ea8a76f6d626e516225ff53a91cd0e3e8febda2"
+  }
+}

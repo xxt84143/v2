@@ -1,14 +1,16 @@
 """Convert completed self-contained SWAN cases to Hs training shards."""
+
+import _bootstrap  # locate shared contracts
 import argparse
 import csv
 from pathlib import Path
 
 import numpy as np
 
-from forcing_arrays import model_inputs
-from wave_geometry import dataset_schema, feature_definition
+from shared.wave_features import model_inputs
+from shared.wave_features import dataset_schema, feature_definition
 from project import DEFAULT_CONFIG, load_config, path_for
-from swan_inputs import write_json
+from shared.io_utils import write_json
 from swan_runtime import CONVERGENCE_FIELDS
 from effective_cases import experiment_settings, quota, select_effective
 

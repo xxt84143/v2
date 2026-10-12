@@ -12,7 +12,9 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from training_core import CHANNELS, read_csv, validate_dataset, write_json
+sys.path.insert(0, str(ROOT.parent))
+from training_core import CHANNELS, validate_dataset
+from shared.io_utils import read_csv, write_json
 
 
 def fixture(root):

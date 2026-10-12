@@ -17,14 +17,16 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from island_core import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
+from generation import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
 from effective_cases import experiment_settings
 from project import DEFAULT_CONFIG, load_config, path_for
 from swan_inputs import grid_coordinates
 from swan_runtime import check_output, inspect_case
 
-FAMILIES = {"swell_no_wind": "无风涌浪", "aligned_windsea": "同向风浪",
-            "swell_weak_wind": "弱风涌浪", "wind_only": "纯风生浪"}
+FAMILIES = {"calm": "静海", "near_calm": "近静海", "swell_no_wind": "无风涌浪",
+            "young_windsea": "青年风浪", "mature_windsea": "成熟风浪",
+            "swell_weak_wind": "弱风涌浪", "swell_moderate_wind": "中风涌浪",
+            "swell_strong_wind": "强风涌浪", "wind_only": "纯风生浪"}
 
 
 def propagation(direction_from):

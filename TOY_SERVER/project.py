@@ -1,42 +1,33 @@
-"""Small shared contract: configuration, paths, and UTC sampling only."""
+"""Synthetic experiment configuration and quota settings; no external datasets."""
 from __future__ import annotations
-
 import json
 import math
-import os
 import re
-import time
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 DEFAULT_CONFIG = Path(__file__).resolve().with_name("config.json")
-PERIODS = {
-    "mean": ("mp1", "mean_wave_period_based_on_first_moment", "MEAN", "Tm01 = m0/m1"),
-    "peak": ("pp1d", "peak_wave_period", "PEAK", "Tp"),
-}
-
+DEFAULT_TRAIN_TARGET = 16384
 
 def load_config(path: Path) -> dict:
     path = path.expanduser().resolve()
     config = json.loads(path.read_text(encoding="utf-8"))
     if config.get("schema_version") != "toy-server-1":
         raise ValueError("Expected schema_version=toy-server-1")
-    generator = config.get("experiment", {}).get("generator")
-    if generator not in (None, "broad-coverage-1"):
-        raise ValueError(f"Unsupported experiment generator: {generator}")
+    if config["experiment"].get("generator") != "broad-coverage-1":
+        raise ValueError("This version requires generator=broad-coverage-1")
+    if config["boundary"]["period"] != "peak":
+        raise ValueError("Synthetic wave matrices contain Tp; boundary.period must be peak")
     config["_base"] = str(path.parent)
-    if config["boundary"]["period"] not in PERIODS:
-        raise ValueError("boundary.period must be mean (ERA5 mp1) or peak (ERA5 pp1d)")
     seen = set()
     for tile in config["tiles"]:
         if not re.fullmatch(r"[A-Za-z0-9_-]+", tile["id"]) or tile["id"] in seen:
-            raise ValueError("Tile IDs must be unique and contain only letters, numbers, _ and -")
+            raise ValueError("Tile IDs must be unique safe names")
         seen.add(tile["id"])
         west, south = float(tile["west"]), float(tile["south"])
-        if not all(math.isfinite(v) and math.isclose(v * 2, round(v * 2)) for v in (west, south)):
-            raise ValueError("Tile southwest corners must lie on the 0.5 degree ERA5 grid")
+        if not all(math.isfinite(v) for v in (west, south)):
+            raise ValueError("Tile coordinates must be finite")
         if not (-180 <= west <= 179.5 and -89.5 <= south <= 89):
-            raise ValueError("This rectangular implementation excludes dateline/polar tiles")
+            raise ValueError("Dateline/polar tiles are unsupported")
     if not seen:
         raise ValueError("At least one tile is required")
     for name in config["resolutions"]:
@@ -44,43 +35,29 @@ def load_config(path: Path) -> dict:
             raise ValueError("Unsafe resolution name")
     return config
 
-
 def path_for(config: dict, key: str) -> Path:
     path = Path(config["paths"][key]).expanduser()
     return (path if path.is_absolute() else Path(config["_base"]) / path).resolve()
 
-
-def utc_datetime(text: str) -> datetime:
-    value = datetime.fromisoformat(text.replace("Z", "+00:00"))
-    value = value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
-    if value.minute or value.second or value.microsecond:
-        raise ValueError("ERA5 sampling must use exact UTC hours")
+def positive_int(value, name):
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
     return value
 
 
-def sample_times(config: dict) -> list[datetime]:
-    sample = config["sampling"]
-    start, end = utc_datetime(sample["start_utc"]), utc_datetime(sample["end_utc"])
-    step = sample["step_hours"]
-    if not isinstance(step, int) or step <= 0 or end < start:
-        raise ValueError("Require integer step_hours > 0 and end_utc >= start_utc")
-    result = []
-    while start <= end:
-        result.append(start)
-        start += timedelta(hours=step)
-    return result
-
-
-def write_json(path: Path, value: dict) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    # Windows can briefly deny replacement while another process holds the destination.
-    for attempt in range(6):
-        try:
-            temporary.replace(path)
-            return
-        except PermissionError:
-            if os.name != "nt" or attempt == 5:
-                raise
-            time.sleep(.02 * 2**attempt)
+def target_settings(config):
+    settings = config.get("case_sampling", {})
+    target = positive_int(settings.get("target_effective_train_cases", DEFAULT_TRAIN_TARGET),
+                          "target_effective_train_cases")
+    reserve = float(settings.get("training_reserve_fraction", .25))
+    if not math.isfinite(reserve) or reserve < 0:
+        raise ValueError("training_reserve_fraction must be finite and non-negative")
+    candidates = positive_int(settings.get("training_candidate_cases", math.ceil(target * (1 + reserve))),
+                              "training_candidate_cases")
+    if candidates < target:
+        raise ValueError("training_candidate_cases must be at least the effective target")
+    evaluation = positive_int(settings.get("evaluation_cases_per_group", 512),
+                              "evaluation_cases_per_group")
+    if not isinstance(settings.get("require_converged", False), bool):
+        raise ValueError("require_converged must be a boolean")
+    return target, candidates, evaluation

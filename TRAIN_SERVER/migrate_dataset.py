@@ -1,15 +1,18 @@
 """Change only the terrain channel of a delivered v2 dataset; never run SWAN."""
 from __future__ import annotations
 
+import _bootstrap  # locate shared contracts
+
 import argparse
 import copy
 from pathlib import Path
 
 import numpy as np
 
-from forcing_arrays import terrain_feature
-from training_core import validate_dataset, write_json, shard_path
-from wave_geometry import RELATIVE_DEPTH_SCHEMA, recover_log_depth, feature_definition
+from shared.wave_features import terrain_feature
+from training_core import validate_dataset, shard_path
+from shared.io_utils import write_json
+from shared.wave_features import RELATIVE_DEPTH_SCHEMA, recover_log_depth, feature_definition
 
 
 def convert_dataset(source, destination, require_splits=True):

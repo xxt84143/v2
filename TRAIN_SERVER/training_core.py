@@ -1,7 +1,8 @@
 """Configuration and dataset contracts shared by independent training entry points."""
 from __future__ import annotations
 
-import csv
+import _bootstrap  # locate shared contracts
+
 import hashlib
 import json
 from collections import Counter
@@ -9,8 +10,9 @@ from pathlib import Path
 
 import numpy as np
 
-from forcing_arrays import terrain_feature
-from wave_geometry import BASELINE_SCHEMA, RELATIVE_DEPTH_SCHEMA, feature_definition
+from shared.wave_features import terrain_feature
+from shared.io_utils import read_csv, digest_file
+from shared.wave_features import BASELINE_SCHEMA, RELATIVE_DEPTH_SCHEMA, feature_definition
 
 HERE = Path(__file__).resolve().parent
 CHANNELS = ["log_depth", "wet_mask", "x", "y", "wave_hs", "wave_tp",
@@ -36,9 +38,6 @@ def resolve_config_path(config, value):
     return (path if path.is_absolute() else Path(config["_config_path"]).parent / path).resolve()
 
 
-def read_csv(path):
-    with Path(path).open(encoding="utf-8-sig", newline="") as stream:
-        return list(csv.DictReader(stream))
 
 
 def shard_path(root, name):
@@ -51,20 +50,8 @@ def shard_path(root, name):
     return destination
 
 
-def digest_file(path):
-    result = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            result.update(chunk)
-    return result.hexdigest()
 
 
-def write_json(path, value):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n", encoding="utf-8")
-    temporary.replace(path)
 
 
 def validate_dataset(root, require_splits=True):

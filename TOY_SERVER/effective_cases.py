@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
-from coverage_generator import target_settings
+from project import target_settings
 from swan_runtime import (SAVED_STATUSES, check_output, convergence,
                           fingerprint, inspect_case)
 

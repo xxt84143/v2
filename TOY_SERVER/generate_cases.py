@@ -4,10 +4,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from island_core import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
+from generation import Rectangle, case_plan, generate_forcings, generate_islands, make_island_depth
 from project import DEFAULT_CONFIG, load_config, path_for
-from swan_inputs import grid_coordinates, prepare_case, write_json, write_manifest
-from coverage_generator import coverage_summary, positive_int, target_settings, validate_config
+from swan_inputs import grid_coordinates, prepare_case, write_manifest
+from shared.io_utils import write_json
+from generation import coverage_summary, validate_config
+from project import positive_int, target_settings
 
 
 def main():
@@ -54,6 +56,11 @@ def main():
         old_recipe, new_recipe = dict(previous), dict(experiment)
         # Candidate count can increase with a stable recipe/pair prefix.
         for recipe in (old_recipe, new_recipe):
+            # Removing obsolete legacy forcing options does not change v2.1.1 inputs.
+            if recipe.get("generator") == "broad-coverage-1":
+                active = {"count", "maximum_relative_gradient", "maximum_direction_gradient_deg",
+                          "maximum_steepness", "directional_spread_deg", "jonswap_gamma", "coverage"}
+                recipe["forcing"] = {k: v for k, v in recipe["forcing"].items() if k in active}
             recipe["case_sampling"] = dict(recipe.get("case_sampling", {}))
             for name in ("target_effective_train_cases", "training_candidate_cases", "training_reserve_fraction"):
                 recipe["case_sampling"].pop(name, None)

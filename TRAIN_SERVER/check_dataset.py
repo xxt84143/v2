@@ -3,7 +3,8 @@ import argparse
 import json
 from pathlib import Path
 
-from training_core import validate_dataset, write_json
+from training_core import validate_dataset
+from shared.io_utils import write_json
 
 
 def main():

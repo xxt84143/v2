@@ -11,7 +11,8 @@ import time
 import numpy as np
 
 from model_factory import build_model
-from training_core import HERE, load_config, resolve_config_path, validate_dataset, write_json
+from training_core import HERE, load_config, resolve_config_path, validate_dataset
+from shared.io_utils import write_json
 
 
 class ShardDataset:

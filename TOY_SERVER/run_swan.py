@@ -16,7 +16,7 @@ from project import DEFAULT_CONFIG, load_config, path_for
 
 from swan_runtime import inspect_case, run_case
 from effective_cases import quota, saved_case
-from swan_inputs import write_json
+from shared.io_utils import write_json
 
 
 def run_with_quota(root, rows, executable, timeout, threads, workers, rerun,

@@ -1,15 +1,16 @@
 """Pure SWAN input rendering and self-contained case serialization."""
+
+import _bootstrap  # locate shared contracts
 import csv
 import hashlib
 import io
-import json
 import math
-import os
 from pathlib import Path
 
 import numpy as np
 
-from forcing_arrays import validate
+from shared.wave_features import validate
+from shared.io_utils import write_json
 
 
 def array_text(array):
@@ -62,12 +63,6 @@ def render_input(case_id, lon, lat, wave, wind, config):
     return "\n".join(lines + ["COMPUTE", "STOP", ""])
 
 
-def write_json(path, value):
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temporary.replace(path)
 
 
 def prepare_case(directory, sample_id, case, profile, tile, lon, lat, depth, wet, wave, wind, config, overwrite=False):

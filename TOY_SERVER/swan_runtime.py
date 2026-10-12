@@ -1,6 +1,8 @@
 """Validate saved SWAN output and record convergence without rejecting it."""
 from __future__ import annotations
 
+import _bootstrap  # locate shared contracts
+
 import hashlib
 import json
 import os
@@ -12,8 +14,8 @@ from pathlib import Path
 
 import numpy as np
 
-from swan_inputs import write_json
-from forcing_arrays import load as load_forcing
+from shared.io_utils import write_json
+from shared.wave_features import load as load_forcing
 
 SAVED_STATUSES = frozenset({"completed", "unconverged", "unverified"})
 CONVERGENCE_FIELDS = ("convergence_percent", "required_percent", "converged",
